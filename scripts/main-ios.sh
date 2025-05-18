@@ -15,6 +15,8 @@ if [[ -z ${BASEDIR} ]]; then
   exit 1
 fi
 
+echo ">>>>>>>>>>>>>>>>>>>SDK_PATH=${SDK_PATH}"
+
 if [[ -z ${SDK_PATH} ]]; then
   echo -e "\n(*) SDK_PATH not defined\n"
   exit 1

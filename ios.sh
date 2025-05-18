@@ -249,13 +249,18 @@ downloaded_library_sources "${ENABLED_LIBRARIES[@]}"
 # THIS WILL SAVE ARCHITECTURES TO BUILD
 TARGET_ARCH_LIST=()
 
+get_sdk_path_new() {
+  echo "$(xcrun --sdk iphoneos --show-sdk-path)"
+}
+
 # BUILD ENABLED LIBRARIES ON ENABLED ARCHITECTURES
 for run_arch in {0..12}; do
   if [[ ${ENABLED_ARCHITECTURES[$run_arch]} -eq 1 ]]; then
     export ARCH=$(get_arch_name "$run_arch")
     export FULL_ARCH=$(get_full_arch_name "$run_arch")
-    export SDK_PATH=$(get_sdk_path)
-    export SDK_NAME=$(get_sdk_name)
+    export SDK_PATH=$(get_sdk_path_new)
+    export SDK_NAME="iphoneos"
+    # export SDK_NAME=$(get_sdk_name)
 
     # EXECUTE MAIN BUILD SCRIPT
     . "${BASEDIR}"/scripts/main-ios.sh "${ENABLED_LIBRARIES[@]}"

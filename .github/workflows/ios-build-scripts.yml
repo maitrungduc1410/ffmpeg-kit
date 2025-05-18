@@ -49,7 +49,7 @@ jobs:
       - name: verify sdk path
         run: xcrun --sdk iphoneos --show-sdk-path
       - name: run the build script
-        run: ./ios.sh --xcframework --enable-ios-audiotoolbox --enable-ios-avfoundation --enable-ios-bzip2 --enable-ios-libiconv --enable-ios-videotoolbox --enable-ios-zlib --target=12.1
+        run: bash -x ./ios.sh --xcframework --enable-ios-audiotoolbox --enable-ios-avfoundation --enable-ios-bzip2 --enable-ios-libiconv --enable-ios-videotoolbox --enable-ios-zlib --target=12.1
       - name: print build logs
         if: ${{ always() }}
         run: cat build.log
