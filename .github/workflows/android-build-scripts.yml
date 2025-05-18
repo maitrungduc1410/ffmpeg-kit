@@ -58,6 +58,12 @@ jobs:
       - name: print ffbuild logs
         if: ${{ failure() }}
         run: '[[ -f ./src/ffmpeg/ffbuild/config.log ]] && tail -50 ./src/ffmpeg/ffbuild/config.log'
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-aar
+          path: |
+            prebuilt/bundle-android-aar
 
   build-main-https-on-linux:
     name: android main on linux
@@ -75,6 +81,10 @@ jobs:
         with:
           distribution: 'adopt'
           java-version: '17'
+      - name: install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gperf
       - name: prerequisites
         run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --uninstall "cmake;3.10.2.4988404" "cmake;3.18.1"
       - name: set up android ndk
@@ -92,6 +102,12 @@ jobs:
       - name: print ffbuild logs
         if: ${{ failure() }}
         run: '[[ -f ./src/ffmpeg/ffbuild/config.log ]] && tail -50 ./src/ffmpeg/ffbuild/config.log'
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-aar-https
+          path: |
+            prebuilt/bundle-android-aar
         
   # build-lts-on-linux:
   #   name: android lts on linux
