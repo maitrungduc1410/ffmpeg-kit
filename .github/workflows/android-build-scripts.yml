@@ -84,7 +84,7 @@ jobs:
       - name: install deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y gperf groff
+          sudo apt-get install -y gperf groff gnulib gettext gtk-doc-tools
       - name: prerequisites
         run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --uninstall "cmake;3.10.2.4988404" "cmake;3.18.1"
       - name: set up android ndk
