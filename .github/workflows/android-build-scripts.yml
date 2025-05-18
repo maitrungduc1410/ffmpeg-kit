@@ -84,7 +84,7 @@ jobs:
       - name: install deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y gperf
+          sudo apt-get install -y gperf groff
       - name: prerequisites
         run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --uninstall "cmake;3.10.2.4988404" "cmake;3.18.1"
       - name: set up android ndk
@@ -93,7 +93,7 @@ jobs:
           unzip -q -o ndk.zip -d .ndk
           echo "ANDROID_NDK_ROOT=$PWD/.ndk/$(ls .ndk)" >> $GITHUB_ENV
       - name: run the build script
-        run: ./android.sh -d --enable-android-media-codec --enable-android-zlib --disable-arm-v7a --enable-gmp --enable-gnutls
+        run: ./android.sh -d --enable-android-media-codec --enable-android-zlib --disable-arm-v7a --enable-gmp --enable-gnutls --enable-libiconv
       - name: list files in prebuilt folder
         run: ls -l prebuilt
       - name: print build logs
