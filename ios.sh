@@ -258,7 +258,7 @@ for run_arch in {0..12}; do
   if [[ ${ENABLED_ARCHITECTURES[$run_arch]} -eq 1 ]]; then
     export ARCH=$(get_arch_name "$run_arch")
     export FULL_ARCH=$(get_full_arch_name "$run_arch")
-    export SDK_PATH=$(get_sdk_path_new)
+    export SDK_PATH="/Applications/Xcode_15.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS17.5.sdk"
     export SDK_NAME="iphoneos"
     # export SDK_NAME=$(get_sdk_name)
 
