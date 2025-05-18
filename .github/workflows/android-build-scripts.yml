@@ -84,7 +84,7 @@ jobs:
       - name: install deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y gperf groff gnulib gettext gtk-doc-tools libtasn1-bin bison texinfo
+          sudo apt-get install -y gperf groff gnulib gettext gtk-doc-tools libtasn1-bin bison texinfo flex
       - name: prerequisites
         run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --uninstall "cmake;3.10.2.4988404" "cmake;3.18.1"
       - name: set up android ndk
@@ -92,6 +92,12 @@ jobs:
           curl -s "https://dl.google.com/android/repository/android-ndk-${{ matrix.ndk-version }}.zip" -o ndk.zip
           unzip -q -o ndk.zip -d .ndk
           echo "ANDROID_NDK_ROOT=$PWD/.ndk/$(ls .ndk)" >> $GITHUB_ENV
+      - name: patch gnutls configuration
+        run: |
+          echo "ac_cv_func_mktime_z=no" >> src/gnutls/config.cache
+          echo "ac_cv_func_tzalloc=no" >> src/gnutls/config.cache
+          echo "ac_cv_func_localtime_rz=no" >> src/gnutls/config.cache
+          echo "ac_cv_func_tzfree=no" >> src/gnutls/config.cache
       - name: run the build script
         run: ./android.sh -d --enable-android-media-codec --enable-android-zlib --disable-arm-v7a --enable-gmp --enable-gnutls --enable-libiconv
       - name: list files in prebuilt folder
