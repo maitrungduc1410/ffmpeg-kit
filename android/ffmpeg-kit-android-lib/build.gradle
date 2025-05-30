@@ -1,4 +1,9 @@
-apply plugin: 'com.android.library'
+plugins {
+    id 'com.android.library'
+    id "com.vanniktech.maven.publish" version "0.32.0" apply true
+}
+
+import com.vanniktech.maven.publish.SonatypeHost
 
 android {
     if (project.android.hasProperty("namespace")) {
@@ -41,21 +46,59 @@ android {
         }
     }
 
-    publishing {
-        singleVariant('release') {
-            withJavadocJar()
-            withSourcesJar()
-        }
-    }
+
+//    publishing {
+//        singleVariant('release') {
+//            withJavadocJar()
+//            withSourcesJar()
+//        }
+//    }
 }
 
-task javadoc(type: Javadoc) {
-    title = 'FFmpegKit'
-    destinationDir = file("${projectDir}/../../docs/android/javadoc")
-    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
-    source = android.sourceSets.main.java.srcDirs
-    configurations.implementation.setCanBeResolved(true)
-    classpath += configurations.implementation
+//task javadoc(type: Javadoc) {
+//    title = 'FFmpegKit'
+//    destinationDir = file("${projectDir}/../../docs/android/javadoc")
+//    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+//    source = android.sourceSets.main.java.srcDirs
+//    configurations.implementation.setCanBeResolved(true)
+//    classpath += configurations.implementation
+//}
+
+mavenPublishing {
+    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+    signAllPublications()
+    coordinates("io.github.maitrungduc1410", "ffmpeg-kit-min", "6.0.0")
+
+    pom {
+        name = "FFmpegKit Android Library"
+        description = "FFmpegKit is a complete, cross-platform solution to record, convert and stream audio and video. It is based on FFmpeg, the leading multimedia framework."
+        inceptionYear = "2025"
+        url = "https://github.com/maitrungduc1410/ffmpeg-kit"
+        licenses {
+            license {
+//                name = "The Apache License, Version 2.0"
+//                url = "http://www.apache.org/licenses/LICENSE-2.0.txt"
+//                distribution = "http://www.apache.org/licenses/LICENSE-2.0.txt"
+
+                // use MIT License instead
+                name = "MIT License"
+                url = "https://opensource.org/license/mit/"
+                distribution = "https://opensource.org/license/mit/"
+            }
+        }
+        developers {
+            developer {
+                id = 'maitrungduc1410'
+                name = 'Mai Trung Duc'
+                url = "https://github.com/maitrungduc1410/"
+            }
+        }
+        scm {
+            connection = 'scm:git:git://git@github.com:maitrungduc1410/ffmpeg-kit.git'
+            developerConnection = 'scm:git:ssh://git@github.com:maitrungduc1410/ffmpeg-kit.git'
+            url = 'https://github.com/maitrungduc1410/ffmpeg-kit'
+        }
+    }
 }
 
 dependencies {
