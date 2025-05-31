@@ -16,7 +16,7 @@ android {
         minSdk 24
         targetSdk 33
         versionCode 240600
-        versionName "6.0"
+        versionName "6.0.1" // increase version when publishing
         project.archivesBaseName = "ffmpeg-kit"
         consumerProguardFiles "consumer-rules.pro"
     }
@@ -67,10 +67,10 @@ android {
 mavenPublishing {
     publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
     signAllPublications()
-    coordinates("io.github.maitrungduc1410", "ffmpeg-kit-min", "6.0.0")
+    coordinates("io.github.maitrungduc1410", "ffmpeg-kit-https", "6.0.1") // change here when publishing min or https
 
     pom {
-        name = "FFmpegKit Android Library"
+        name = "FFmpegKit Android Library (HTTPS)" // update title if not using HTTPS
         description = "FFmpegKit is a complete, cross-platform solution to record, convert and stream audio and video. It is based on FFmpeg, the leading multimedia framework."
         inceptionYear = "2025"
         url = "https://github.com/maitrungduc1410/ffmpeg-kit"
