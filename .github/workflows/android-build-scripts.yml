@@ -50,7 +50,8 @@ jobs:
           unzip -q -o ndk.zip -d .ndk
           echo "ANDROID_NDK_ROOT=$PWD/.ndk/$(ls .ndk)" >> $GITHUB_ENV
       - name: run the build script
-        # the proportion of x86 and x86_64 is very low, so we disable them to speed up the build + minimize the size of the aar
+        # gnutls + gmp build to support https is not working because of some build issues ("clang: "all" is not a valid value for -march"). Hence we need to use openssl here. But openssl does not support x86 and x86_64 architectures.
+        # the proportion of x86 and x86_64 is very low, so we disable them to support https + speed up the build + minimize the size of the aar
         run: |
           COMMON_FLAGS="--enable-android-media-codec --enable-android-zlib --disable-arm-v7a --disable-x86 --disable-x86-64"
           if [[ "${{ matrix.ffmpeg-version }}" == "https" ]]; then
