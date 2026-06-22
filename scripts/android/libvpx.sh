@@ -3,12 +3,15 @@
 # UPDATE BUILD FLAGS
 export CFLAGS="$(get_cflags "${LIB_NAME}") -I${LIB_INSTALL_BASE}/cpu-features/include/ndk_compat"
 
-# libvpx's configure (the *-android-gcc target) links its toolchain probe by invoking ${LD}
-# directly. ffmpeg-kit exports LD=lld for NDK r23+, but the raw linker cannot parse the
-# compiler-style flags libvpx passes (-march, -mfpu, ...), so configure fails early with
-# "Toolchain is unable to link executables". Link through the clang driver instead; only a
-# static library is produced here (shared/examples/tools/unit-tests are disabled), so this is safe.
-export LD="${CC}"
+# libvpx's configure links a test executable with the C++ driver (webm_io makes it use ${CXX})
+# together with "-static" (added automatically for android targets). ffmpeg-kit's LDFLAGS include
+# the host toolchain lib directory (.../prebuilt/${TOOLCHAIN}/lib), which on NDK r27 contains the
+# x86_64 host libc++abi.a. With -static the linker pulls that host archive and configure dies with
+# "Toolchain is unable to link executables" / "is incompatible with armelf_linux_eabi". Strip the
+# host lib path so the correct target C++ runtime is resolved from the sysroot. libvpx only builds
+# a static library here, so no executables are actually linked during the build.
+HOST_TOOLCHAIN_LIB="-L${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/${TOOLCHAIN}/lib"
+export LDFLAGS="${LDFLAGS//$HOST_TOOLCHAIN_LIB/}"
 
 # SET BUILD OPTIONS
 TARGET_CPU=""
