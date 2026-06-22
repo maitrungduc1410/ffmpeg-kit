@@ -3,6 +3,13 @@
 # UPDATE BUILD FLAGS
 export CFLAGS="$(get_cflags "${LIB_NAME}") -I${LIB_INSTALL_BASE}/cpu-features/include/ndk_compat"
 
+# libvpx's configure (the *-android-gcc target) links its toolchain probe by invoking ${LD}
+# directly. ffmpeg-kit exports LD=lld for NDK r23+, but the raw linker cannot parse the
+# compiler-style flags libvpx passes (-march, -mfpu, ...), so configure fails early with
+# "Toolchain is unable to link executables". Link through the clang driver instead; only a
+# static library is produced here (shared/examples/tools/unit-tests are disabled), so this is safe.
+export LD="${CC}"
+
 # SET BUILD OPTIONS
 TARGET_CPU=""
 ASM_OPTIONS=""
