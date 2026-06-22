@@ -78,7 +78,7 @@ jobs:
               ./android.sh $COMMON_FLAGS $VIDEO_FLAGS
               ;;
             full)
-              # the official "full" package bundles gmp  gnutls for https. gnutls/gmp fail to build with this NDK
+              # the official "full" package bundles gmp + gnutls for https. gnutls/gmp fail to build with this NDK
               # (the "-march=all" clang error mentioned above), so we substitute openssl just like the https build.
               ./android.sh $COMMON_FLAGS $AUDIO_FLAGS $VIDEO_FLAGS --enable-libxml2 --enable-openssl
               ;;
