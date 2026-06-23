@@ -40,8 +40,10 @@ jobs:
         with:
           github_token: ${{ github.token }}
           workflow: ios-build-scripts.yml
-          workflow_conclusion: success
-          branch: main
+          # run_id and branch/workflow_conclusion are mutually exclusive in this action, so
+          # only send the "latest successful on main" filters when no explicit run id is given.
+          workflow_conclusion: ${{ inputs.ios_build_run_id == '' && 'success' || '' }}
+          branch: ${{ inputs.ios_build_run_id == '' && 'main' || '' }}
           run_id: ${{ inputs.ios_build_run_id }}
           name: ^ios-.*-xcframework$
           name_is_regexp: true
