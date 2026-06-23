@@ -17,10 +17,7 @@ A few important notes:
 ## Usage
 
 Replace `min` with whichever package (`min`, `https`, `audio`, `video`, `full`) you need.
-For the full API (running commands, sessions, callbacks, FFprobe, etc.) see the per-platform guides:
-
-- **Android API usage** → [`android/README.md`](android/README.md)
-- **iOS API usage** → [`apple/README.md`](apple/README.md)
+For the full API (running commands, sessions, callbacks, FFprobe, etc.) see the per-platform guides.
 
 ### iOS (CocoaPods)
 
