@@ -31,6 +31,12 @@ if [[ -n "$DETECTED_IOS_SDK_VERSION" && $(compare_versions "$DETECTED_IOS_SDK_VE
   ${SED_INLINE} "s|ZLIB_VERNUM default .*|ZLIB_VERNUM default 0|g" "${BASEDIR}"/src/"${LIB_NAME}"/scripts/pnglibconf.dfa
 fi
 
+# WORKAROUND FOR XCODE 26: <float.h> now transitively includes <TargetConditionals.h>,
+# which defines TARGET_OS_MAC=1. That makes pngpriv.h take its Classic-Mac branch and
+# "#include <fp.h>" - a Carbon header removed from modern SDKs ("fatal error: 'fp.h' file
+# not found"). Route that branch to the standard <math.h> so the FP declarations resolve.
+${SED_INLINE} "s|include <fp.h>|include <math.h>|g" "${BASEDIR}"/src/"${LIB_NAME}"/pngpriv.h
+
 ./configure \
   --prefix="${LIB_INSTALL_PREFIX}" \
   --with-pic \
