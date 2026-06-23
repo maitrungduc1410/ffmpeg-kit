@@ -1,18 +1,34 @@
 name: publish
 
 # Manual-only release workflow. It does NOT build anything: it reuses the
-# xcframework artifacts produced by the latest successful "ios build scripts" run,
-# zips them to a GitHub Release, and pushes the CocoaPods podspecs to trunk.
-# (Android publishing will be added here later.)
+# artifacts produced by the latest successful build workflows and publishes them.
+#   * iOS: zips the xcframeworks ("ios build scripts" run) to a GitHub Release and
+#          pushes the CocoaPods podspecs to trunk.
+#   * Android: extracts the prebuilt .so from the AARs ("android build scripts" run)
+#          and publishes the 5 variants to Maven Central via the vanniktech plugin.
 on:
   workflow_dispatch:
     inputs:
       release_version:
-        description: 'iOS release version, e.g. 6.0.3 (release tag ios-<version> + CocoaPods version)'
+        description: 'Release version, e.g. 6.0.5 (iOS release tag ios-<version> + CocoaPods version + Android Maven version)'
         required: true
         type: string
+      publish_ios:
+        description: 'Publish iOS (GitHub Release + CocoaPods trunk)'
+        required: false
+        type: boolean
+        default: true
+      publish_android:
+        description: 'Publish Android to Maven Central'
+        required: false
+        type: boolean
+        default: true
       ios_build_run_id:
         description: 'Optional: ios-build-scripts.yml run id to publish from (default: latest successful run on main)'
+        required: false
+        type: string
+      android_build_run_id:
+        description: 'Optional: android-build-scripts.yml run id to publish from (default: latest successful run on main)'
         required: false
         type: string
 
@@ -26,6 +42,7 @@ jobs:
   # ---------------------------------------------------------------------------
   publish-ios-release:
     name: publish ios release
+    if: ${{ inputs.publish_ios }}
     runs-on: ubuntu-22.04
     permissions:
       contents: write  # create the release
@@ -88,6 +105,7 @@ jobs:
   # ---------------------------------------------------------------------------
   publish-cocoapods:
     name: publish cocoapods trunk
+    if: ${{ inputs.publish_ios }}
     needs: publish-ios-release
     runs-on: macos-26
     permissions:
@@ -164,3 +182,83 @@ jobs:
             echo "::error::not published on trunk: ${failed[*]}"; exit 1
           fi
           echo "All 5 podspecs are live on CocoaPods trunk."
+
+  # ---------------------------------------------------------------------------
+  # ANDROID MAVEN CENTRAL
+  # One deployment per package (independent Maven artifacts: ffmpeg-kit-min, -https,
+  # -audio, -video, -full). No native rebuild: each job pulls the variant's AAR from
+  # the latest successful "android build scripts" run, extracts the prebuilt .so into
+  # android/libs, then lets the vanniktech plugin rebuild the AAR + generate the
+  # sources/javadoc/POM, GPG-sign everything and release it to the Central Portal.
+  # ---------------------------------------------------------------------------
+  publish-android-maven:
+    name: publish android maven (${{ matrix.variant }})
+    if: ${{ inputs.publish_android }}
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read  # read artifacts from the build workflow's runs
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [ 'min', 'https', 'audio', 'video', 'full' ]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - name: set up temurin jdk 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: download this variant's aar from the latest android build
+        uses: dawidd6/action-download-artifact@v9
+        with:
+          github_token: ${{ github.token }}
+          workflow: android-build-scripts.yml
+          # run_id and branch/workflow_conclusion are mutually exclusive in this action, so
+          # only send the "latest successful on main" filters when no explicit run id is given.
+          workflow_conclusion: ${{ inputs.android_build_run_id == '' && 'success' || '' }}
+          branch: ${{ inputs.android_build_run_id == '' && 'main' || '' }}
+          run_id: ${{ inputs.android_build_run_id }}
+          name: android-${{ matrix.variant }}-aar
+          path: artifacts
+          if_no_artifact_found: fail
+
+      - name: extract prebuilt .so from the aar into android/libs
+        run: |
+          aar="$(find artifacts -name '*.aar' | head -n1)"
+          if [ -z "${aar}" ]; then
+            echo "::error::no .aar found in the downloaded artifact for ${{ matrix.variant }}"; exit 1
+          fi
+          echo "using aar: ${aar}"
+          rm -rf android/libs && mkdir -p android/libs
+          # the aar stores native libs under jni/<abi>/lib*.so; jniLibs.srcDirs=["../libs"]
+          # expects <libs>/<abi>/lib*.so, so copy the abi folders straight across.
+          unzip -o "${aar}" 'jni/*' -d /tmp/aar_extract >/dev/null
+          cp -r /tmp/aar_extract/jni/* android/libs/
+          echo "android/libs contents:"
+          ls -R android/libs
+
+      - name: publish ${{ matrix.variant }} to maven central
+        working-directory: android
+        env:
+          # Central Portal user token (central.sonatype.com -> Account -> Generate User Token)
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          # GPG signing (required by Maven Central). In-memory key works headless on CI.
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.GPG_SIGNING_KEY_ID }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_SIGNING_PASSWORD }}
+        run: |
+          if [ -z "${ORG_GRADLE_PROJECT_mavenCentralUsername}" ] || [ -z "${ORG_GRADLE_PROJECT_signingInMemoryKey}" ]; then
+            echo "::error::missing MAVEN_CENTRAL_USERNAME/PASSWORD or GPG_SIGNING_KEY secrets"; exit 1
+          fi
+          chmod +x ./gradlew
+          # publishAndReleaseToMavenCentral = upload + auto-release (no manual click on the portal)
+          ./gradlew :ffmpeg-kit-android-lib:publishAndReleaseToMavenCentral \
+            -PffmpegKitPackage=${{ matrix.variant }} \
+            -PffmpegKitVersion=${{ inputs.release_version }} \
+            --no-configuration-cache --stacktrace

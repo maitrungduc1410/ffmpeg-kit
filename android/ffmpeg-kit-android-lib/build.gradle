@@ -5,18 +5,27 @@ plugins {
 
 import com.vanniktech.maven.publish.SonatypeHost
 
+// Which package (min/https/audio/video/full) and version are being published.
+// Passed from CI as -PffmpegKitPackage=<variant> -PffmpegKitVersion=<x.y.z>.
+// Defaults keep local/manual `assembleRelease` working without extra flags.
+def ffmpegKitPackage = (project.findProperty("ffmpegKitPackage") ?: "https").toString()
+def ffmpegKitVersion = (project.findProperty("ffmpegKitVersion") ?: "6.0.1").toString()
+
 android {
     if (project.android.hasProperty("namespace")) {
         namespace 'com.arthenica.ffmpegkit'
     }
     compileSdk 33
-    ndkVersion "22.1.7171670"
+    // No ndkVersion here on purpose: this module is published from prebuilt .so files
+    // in ../libs (jniLibs), it does not compile native code, so it must not require an
+    // NDK to be installed on the publishing runner. The native build uses
+    // tools/android/build.gradle instead (android.sh swaps this file out at build time).
 
     defaultConfig {
         minSdk 24
         targetSdk 33
         versionCode 240600
-        versionName "6.0.1" // increase version when publishing
+        versionName ffmpegKitVersion
         project.archivesBaseName = "ffmpeg-kit"
         consumerProguardFiles "consumer-rules.pro"
     }
@@ -67,10 +76,10 @@ android {
 mavenPublishing {
     publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
     signAllPublications()
-    coordinates("io.github.maitrungduc1410", "ffmpeg-kit-https", "6.0.1") // change here when publishing min or https
+    coordinates("io.github.maitrungduc1410", "ffmpeg-kit-${ffmpegKitPackage}", ffmpegKitVersion)
 
     pom {
-        name = "FFmpegKit Android Library (HTTPS)" // update title if not using HTTPS
+        name = "FFmpegKit Android Library (${ffmpegKitPackage.toUpperCase()})"
         description = "FFmpegKit is a complete, cross-platform solution to record, convert and stream audio and video. It is based on FFmpeg, the leading multimedia framework."
         inceptionYear = "2025"
         url = "https://github.com/maitrungduc1410/ffmpeg-kit"
