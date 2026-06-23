@@ -26,56 +26,174 @@ on:
       - 'apple.sh'
       - 'ios.sh'
 
-jobs:
-  # build-main-on-macos-sonoma:
-  #   name: ios main on sonoma
-  #   runs-on: macos-14
-  #   strategy:
-  #     matrix:
-  #       xcode: [ '15.4', '16.0' ]
-  #   defaults:
-  #     run:
-  #       shell: bash
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: prerequisites
-  #       run: brew install autoconf automake libtool pkg-config curl git cmake nasm
-  #     - name: set up xcode
-  #       run: echo "export DEVELOPER_DIR=/Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer" > ~/.xcode.for.ffmpeg.kit.sh
-  #     - name: run the build script
-  #       run: ./ios.sh --xcframework --enable-ios-audiotoolbox --enable-ios-avfoundation --enable-ios-bzip2 --enable-ios-libiconv --enable-ios-videotoolbox --enable-ios-zlib
-  #     - name: print build logs
-  #       if: ${{ always() }}
-  #       run: cat build.log
-  #     - name: print ffbuild logs
-  #       if: ${{ failure() }}
-  #       run: '[[ -f ./src/ffmpeg/ffbuild/config.log ]] && tail -50 ./src/ffmpeg/ffbuild/config.log'
+# Shared configuration used by both the "prime" job and every matrix variant.
+# Keep these flag sets as the SINGLE SOURCE OF TRUTH for what each package contains
+# (they mirror the ffmpeg-kit "audio"/"video"/"full" package definitions in README "Packages").
+# NOTE: on Apple, iconv is a system library enabled via --enable-ios-libiconv in COMMON_FLAGS,
+# so the external libiconv that the "video" package uses elsewhere is intentionally omitted here.
+env:
+  # macos-26 runner ships Xcode 26.x; 26.5 is the latest installed at /Applications/Xcode_26.5.app.
+  # Pin the runner (below) and this version together: Xcode 26.5 only exists on the macos-26 image.
+  XCODE_VERSION: "26.5"
+  BREW_PACKAGES: "autoconf automake libtool pkg-config curl git cmake nasm gcc gperf texinfo yasm bison autogen wget gettext meson ninja ragel gtk-doc libtasn1"
+  COMMON_FLAGS: "--xcframework --enable-ios-audiotoolbox --enable-ios-avfoundation --enable-ios-bzip2 --enable-ios-libiconv --enable-ios-videotoolbox --enable-ios-zlib --no-bitcode"
+  AUDIO_FLAGS: "--enable-lame --enable-libilbc --enable-libvorbis --enable-opencore-amr --enable-opus --enable-shine --enable-soxr --enable-speex --enable-twolame --enable-vo-amrwbenc"
+  VIDEO_FLAGS: "--enable-dav1d --enable-fontconfig --enable-freetype --enable-fribidi --enable-kvazaar --enable-libass --enable-libtheora --enable-libvpx --enable-libwebp --enable-snappy --enable-zimg"
+  # NOTE: the cache key for the heavy, variant-independent artifacts (downloaded sources +
+  # compiled external libraries) is built inline from hashFiles('scripts/**','tools/**','ios.sh')
+  # in each step below (hashFiles must run after checkout, so it cannot live in this env block).
+  # It is tied to the build system + Xcode version, so:
+  #   * unchanged build scripts  -> exact cache hit  -> every commit reuses the libraries
+  #   * any build script changed  -> new key -> a clean rebuild (avoids stale libraries, since
+  #     ffmpeg-kit's "already installed" check only looks at file presence, not source freshness)
 
-  build-main-on-macos-latest:
-    name: ios main on macos latest
-    runs-on: macos-latest
-    strategy:
-      matrix:
-        xcode: [ '16.2' ]
-        ffmpeg-version: [ 'min', 'https']
+jobs:
+  # ---------------------------------------------------------------------------
+  # PRIME JOB
+  # Builds the union of all external libraries that any variant could need, ONCE.
+  # ffmpeg, ffmpeg-kit and the framework assembly are skipped here
+  # (--skip-ffmpeg --skip-ffmpeg-kit --no-framework). The resulting prebuilt/ + src/
+  # are cached and reused by every variant below (sharing between variants), and by
+  # future runs with the same build scripts (sharing between commits).
+  # ---------------------------------------------------------------------------
+  build-libs:
+    name: prime shared native libraries
+    runs-on: macos-26
     defaults:
       run:
         shell: bash
     steps:
       - uses: actions/checkout@v7
+      - name: cache homebrew downloads
+        uses: actions/cache@v5
+        with:
+          path: ~/Library/Caches/Homebrew
+          key: brew-${{ runner.os }}-${{ hashFiles('.github/workflows/ios-build-scripts.yml') }}
+          restore-keys: |
+            brew-${{ runner.os }}-
       - name: prerequisites
-        run: brew install autoconf automake libtool pkg-config curl git cmake nasm gcc gperf texinfo yasm bison autogen wget gettext meson ninja ragel gtk-doc libtasn1
+        run: brew install ${BREW_PACKAGES}
       - name: set up xcode
-        run: echo "export DEVELOPER_DIR=/Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer" > ~/.xcode.for.ffmpeg.kit.sh
-      - name: run the build script
-        # Apple will reject if frameworks contain bitcode. Therefore, we disable bitcode here.
+        run: echo "export DEVELOPER_DIR=/Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer" > ~/.xcode.for.ffmpeg.kit.sh
+
+      - name: restore native sources
+        id: cache-src
+        uses: actions/cache/restore@v5
+        with:
+          path: src
+          key: ffmpeg-ios-src-xcode${{ env.XCODE_VERSION }}-${{ hashFiles('scripts/**', 'tools/**', 'ios.sh') }}
+      - name: restore prebuilt external libraries
+        id: cache-prebuilt
+        uses: actions/cache/restore@v5
+        with:
+          path: prebuilt
+          key: ffmpeg-ios-prebuilt-xcode${{ env.XCODE_VERSION }}-${{ hashFiles('scripts/**', 'tools/**', 'ios.sh') }}
+
+      - name: build all external libraries (no ffmpeg, no framework)
+        # keg-only bison + the xml catalog are required to build some external libraries
+        # (e.g. fontconfig/libxml2); resolve the brew prefix dynamically so this works on
+        # both Intel and Apple-silicon runners.
         run: |
-          COMMON_FLAGS="--xcframework --enable-ios-audiotoolbox --enable-ios-avfoundation --enable-ios-bzip2 --enable-ios-libiconv --enable-ios-videotoolbox --enable-ios-zlib --no-bitcode"
-          if [[ "${{ matrix.ffmpeg-version }}" == "https" ]]; then
-            ./ios.sh $COMMON_FLAGS --enable-openssl
-          else
-            ./ios.sh $COMMON_FLAGS
-          fi
+          export BREW_PREFIX="$(brew --prefix)"
+          export PATH="$BREW_PREFIX/opt/bison/bin:$PATH"
+          export XML_CATALOG_FILES="$BREW_PREFIX/etc/xml/catalog"
+          ./ios.sh --no-bitcode $AUDIO_FLAGS $VIDEO_FLAGS \
+            --enable-libxml2 --enable-openssl \
+            --skip-ffmpeg --skip-ffmpeg-kit --no-framework
+
+      # Only persist caches on success so a failed/partial build never poisons the cache
+      # (the "already installed" check would otherwise skip a half-built library next time).
+      - name: save native sources
+        if: ${{ success() && steps.cache-src.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v5
+        with:
+          path: src
+          key: ${{ steps.cache-src.outputs.cache-primary-key }}
+      - name: save prebuilt external libraries
+        if: ${{ success() && steps.cache-prebuilt.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v5
+        with:
+          path: prebuilt
+          key: ${{ steps.cache-prebuilt.outputs.cache-primary-key }}
+
+      - name: print build logs
+        if: ${{ always() }}
+        run: cat build.log
+      - name: print ffbuild logs
+        if: ${{ failure() }}
+        run: '[[ -f ./src/ffmpeg/ffbuild/config.log ]] && tail -50 ./src/ffmpeg/ffbuild/config.log'
+
+  # ---------------------------------------------------------------------------
+  # VARIANT MATRIX
+  # Each variant restores the shared caches from the prime job, so all external
+  # libraries are reported "already built" and skipped. Only ffmpeg + ffmpeg-kit
+  # (variant-specific config) and the xcframework assembly run here.
+  # ---------------------------------------------------------------------------
+  build-main-on-macos-latest:
+    name: ios main on macos 26
+    needs: build-libs
+    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        ffmpeg-version: [ 'video' ]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - name: cache homebrew downloads
+        uses: actions/cache@v5
+        with:
+          path: ~/Library/Caches/Homebrew
+          key: brew-${{ runner.os }}-${{ hashFiles('.github/workflows/ios-build-scripts.yml') }}
+          restore-keys: |
+            brew-${{ runner.os }}-
+      - name: prerequisites
+        run: brew install ${BREW_PACKAGES}
+      - name: set up xcode
+        run: echo "export DEVELOPER_DIR=/Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer" > ~/.xcode.for.ffmpeg.kit.sh
+
+      - name: restore native sources
+        uses: actions/cache/restore@v5
+        with:
+          path: src
+          key: ffmpeg-ios-src-xcode${{ env.XCODE_VERSION }}-${{ hashFiles('scripts/**', 'tools/**', 'ios.sh') }}
+      - name: restore prebuilt external libraries
+        uses: actions/cache/restore@v5
+        with:
+          path: prebuilt
+          key: ffmpeg-ios-prebuilt-xcode${{ env.XCODE_VERSION }}-${{ hashFiles('scripts/**', 'tools/**', 'ios.sh') }}
+
+      - name: run the build script
+        # Apple will reject frameworks that contain bitcode, therefore bitcode is disabled (--no-bitcode in COMMON_FLAGS).
+        # The external libraries below were already compiled by the "prime shared native libraries" job, so ffmpeg-kit reports
+        # them as "already built" and only ffmpeg + ffmpeg-kit + the xcframework are produced here.
+        # keg-only bison + the xml catalog are needed to build/link some libraries (e.g. fontconfig/libxml2).
+        run: |
+          export BREW_PREFIX="$(brew --prefix)"
+          export PATH="$BREW_PREFIX/opt/bison/bin:$PATH"
+          export XML_CATALOG_FILES="$BREW_PREFIX/etc/xml/catalog"
+          case "${{ matrix.ffmpeg-version }}" in
+            min)
+              ./ios.sh $COMMON_FLAGS
+              ;;
+            https)
+              ./ios.sh $COMMON_FLAGS --enable-openssl
+              ;;
+            audio)
+              ./ios.sh $COMMON_FLAGS $AUDIO_FLAGS
+              ;;
+            video)
+              ./ios.sh $COMMON_FLAGS $VIDEO_FLAGS
+              ;;
+            full)
+              # the official "full" package bundles gmp + gnutls for https; we substitute openssl to stay consistent with the https build.
+              ./ios.sh $COMMON_FLAGS $AUDIO_FLAGS $VIDEO_FLAGS --enable-libxml2 --enable-openssl
+              ;;
+          esac
+      - name: list files in prebuilt folder
+        run: ls -l prebuilt
       - name: print build logs
         if: ${{ always() }}
         run: cat build.log
@@ -88,57 +206,3 @@ jobs:
           name: ios-${{ matrix.ffmpeg-version }}-xcframework
           path: |
             prebuilt/bundle-apple-xcframework-ios
-
-  # build-main-on-macos-ventura:
-  #   name: ios main on ventura
-  #   runs-on: macos-13
-  #   strategy:
-  #     matrix:
-  #       xcode: [ '15.2' ]
-  #   defaults:
-  #     run:
-  #       shell: bash
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: prerequisites
-  #       run: brew install autoconf automake libtool pkg-config curl git cmake nasm gcc gperf texinfo yasm bison autogen wget gettext meson ninja ragel gtk-doc libtasn1
-  #     - name: set up xcode
-  #       run: echo "export DEVELOPER_DIR=/Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer" > ~/.xcode.for.ffmpeg.kit.sh
-  #     - name: run the build script
-  #       run: ./ios.sh --xcframework --enable-ios-audiotoolbox --enable-ios-avfoundation --enable-ios-bzip2 --enable-ios-libiconv --enable-ios-videotoolbox --enable-ios-zlib --no-bitcode --enable-openssl
-  #     - name: print build logs
-  #       if: ${{ always() }}
-  #       run: cat build.log
-  #     - name: print ffbuild logs
-  #       if: ${{ failure() }}
-  #       run: '[[ -f ./src/ffmpeg/ffbuild/config.log ]] && tail -50 ./src/ffmpeg/ffbuild/config.log'
-  #     - name: Archive artifacts
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: ios-https-xcframework
-  #         path: |
-  #           prebuilt/bundle-apple-xcframework-ios
-
-  # build-lts-on-macos-monterey:
-  #   name: ios lts on monterey
-  #   runs-on: macos-12
-  #   strategy:
-  #     matrix:
-  #       xcode: [ '13.4.1', '14.2' ]
-  #   defaults:
-  #     run:
-  #       shell: bash
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: prerequisites
-  #       run: brew install autoconf automake libtool pkg-config curl git cmake nasm
-  #     - name: set up xcode
-  #       run: echo "export DEVELOPER_DIR=/Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer" > ~/.xcode.for.ffmpeg.kit.sh
-  #     - name: run the build script
-  #       run: ./ios.sh --lts --enable-ios-audiotoolbox --enable-ios-bzip2 --enable-ios-libiconv --enable-ios-zlib
-  #     - name: print build logs
-  #       if: ${{ always() }}
-  #       run: cat build.log
-  #     - name: print ffbuild logs
-  #       if: ${{ failure() }}
-  #       run: '[[ -f ./src/ffmpeg/ffbuild/config.log ]] && tail -50 ./src/ffmpeg/ffbuild/config.log'

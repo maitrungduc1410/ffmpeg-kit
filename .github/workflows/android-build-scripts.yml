@@ -24,7 +24,7 @@ on:
       - 'tools/**'
       - 'android.sh'
 
-# Shared configuration used by both the "prime" job and every matrix variant
+# Shared configuration used by both the "prime" job and every matrix variant.
 # Keep these flag sets as the SINGLE SOURCE OF TRUTH for what each package contains
 # (they mirror the ffmpeg-kit "audio"/"video"/"full" package definitions in README "Packages").
 env:
@@ -57,10 +57,10 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v7
-      - name: set up adopt jdk 17
+      - name: set up temurin jdk 17
         uses: actions/setup-java@v5
         with:
-          distribution: 'adopt'
+          distribution: 'temurin'
           java-version: '17'
       - name: install build tools for external libraries
         run: |
@@ -150,10 +150,10 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v7
-      - name: set up adopt jdk 17
+      - name: set up temurin jdk 17
         uses: actions/setup-java@v5
         with:
-          distribution: 'adopt'
+          distribution: 'temurin'
           java-version: '17'
       - name: install build tools for external libraries
         run: |
