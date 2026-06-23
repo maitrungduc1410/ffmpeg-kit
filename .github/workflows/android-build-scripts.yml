@@ -31,7 +31,7 @@ jobs:
     strategy:
       matrix:
         ndk-version: ['r27c-linux'] # use r27c to support 16kb page size
-        ffmpeg-version: [ 'video' ]
+        ffmpeg-version: [ 'audio', 'full' ]
         # ffmpeg-version: [ 'min', 'https', 'audio', 'video', 'full' ]
     defaults:
       run:
