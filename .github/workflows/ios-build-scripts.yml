@@ -136,7 +136,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ffmpeg-version: [ 'video' ]
+        ffmpeg-version: [ 'min', 'https', 'audio', 'video', 'full' ]
     defaults:
       run:
         shell: bash
