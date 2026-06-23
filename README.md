@@ -17,6 +17,10 @@ A few important notes:
 ## Usage
 
 Replace `min` with whichever package (`min`, `https`, `audio`, `video`, `full`) you need.
+For the full API (running commands, sessions, callbacks, FFprobe, etc.) see the per-platform guides:
+
+- **Android API usage** → [`android/README.md`](android/README.md)
+- **iOS API usage** → [`apple/README.md`](apple/README.md)
 
 ### iOS (CocoaPods)
 
@@ -28,6 +32,8 @@ pod 'ffmpeg-mobile-min', '~> 6.0'
 # pod 'ffmpeg-mobile-video', '~> 6.0'
 # pod 'ffmpeg-mobile-full',  '~> 6.0'
 ```
+
+See [`apple/README.md`](apple/README.md) for the iOS API.
 
 ### Android (Gradle)
 
@@ -42,6 +48,8 @@ dependencies {
     // implementation 'io.github.maitrungduc1410:ffmpeg-kit-full:6.0.1'
 }
 ```
+
+See [`android/README.md`](android/README.md) for the Android API.
 
 > Use the latest published version; the examples above may not reflect the most recent release.
 
