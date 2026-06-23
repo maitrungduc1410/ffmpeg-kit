@@ -76,14 +76,12 @@ mavenPublishing {
         url = "https://github.com/maitrungduc1410/ffmpeg-kit"
         licenses {
             license {
-//                name = "The Apache License, Version 2.0"
-//                url = "http://www.apache.org/licenses/LICENSE-2.0.txt"
-//                distribution = "http://www.apache.org/licenses/LICENSE-2.0.txt"
-
-                // use MIT License instead
-                name = "MIT License"
-                url = "https://opensource.org/license/mit/"
-                distribution = "https://opensource.org/license/mit/"
+                // The published bundle contains FFmpeg (built with --enable-version3 and
+                // without --enable-gpl) plus the FFmpegKit wrapper, both of which are
+                // LGPL v3.0, so the artifact as a whole is distributed under LGPL v3.0.
+                name = "GNU Lesser General Public License v3.0"
+                url = "https://www.gnu.org/licenses/lgpl-3.0.en.html"
+                distribution = "repo"
             }
         }
         developers {
