@@ -24,27 +24,44 @@ on:
       - 'tools/**'
       - 'android.sh'
 
+# Shared configuration used by both the "prime" job and every matrix variant.
+# Keep these flag sets as the SINGLE SOURCE OF TRUTH for what each package contains
+# (they mirror the ffmpeg-kit "audio"/"video"/"full" package definitions in README "Packages").
+env:
+  NDK_VERSION: r27c-linux # use r27c to support 16kb page size
+  COMMON_FLAGS: "--enable-android-media-codec --enable-android-zlib --disable-arm-v7a --disable-x86 --disable-x86-64"
+  AUDIO_FLAGS: "--enable-lame --enable-libilbc --enable-libvorbis --enable-opencore-amr --enable-opus --enable-shine --enable-soxr --enable-speex --enable-twolame --enable-vo-amrwbenc"
+  VIDEO_FLAGS: "--enable-dav1d --enable-fontconfig --enable-freetype --enable-fribidi --enable-kvazaar --enable-libass --enable-libiconv --enable-libtheora --enable-libvpx --enable-libwebp --enable-snappy --enable-zimg"
+  # NOTE: the cache key for the heavy, variant-independent artifacts (downloaded sources +
+  # compiled external libraries) is built inline from hashFiles('scripts/**','tools/**','android.sh')
+  # in each step below (hashFiles must run after checkout, so it cannot live in this env block).
+  # Because it is tied to the build system only:
+  #   * unchanged build scripts  -> exact cache hit  -> every commit reuses the libraries
+  #   * any build script changed  -> new key -> a clean rebuild (avoids stale libraries, since
+  #     ffmpeg-kit's "already installed" check only looks at file presence, not source freshness)
+
 jobs:
-  build-main-on-linux:
-    name: android main on linux
+  # ---------------------------------------------------------------------------
+  # PRIME JOB
+  # Builds the union of all external libraries that any variant could need, ONCE.
+  # ffmpeg and the final ndk-build are skipped here (--skip-ffmpeg --skip-ffmpeg-kit),
+  # and no AAR is produced (--no-archive). The resulting prebuilt/ + src/ + NDK are
+  # cached and then reused by every variant below (sharing between variants), and by
+  # future runs with the same build scripts (sharing between commits).
+  # ---------------------------------------------------------------------------
+  build-libs:
+    name: prime shared native libraries
     runs-on: ubuntu-22.04
-    strategy:
-      matrix:
-        ndk-version: ['r27c-linux'] # use r27c to support 16kb page size
-        ffmpeg-version: [ 'full' ]
-        # ffmpeg-version: [ 'min', 'https', 'audio', 'video', 'full' ]
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: set up adopt jdk 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'adopt'
           java-version: '17'
-      # the audio/video/full packages build extra external libraries (autotools/meson/nasm based)
-      # so we install the same toolchain used by the nightly builds
       - name: install build tools for external libraries
         run: |
           sudo apt-get update
@@ -52,19 +69,139 @@ jobs:
           python3 -m pip install --upgrade meson
       - name: prerequisites
         run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --uninstall "cmake;3.10.2.4988404" "cmake;3.18.1"
+
+      - name: restore android ndk
+        id: cache-ndk
+        uses: actions/cache/restore@v5
+        with:
+          path: .ndk
+          key: ndk-${{ env.NDK_VERSION }}
       - name: set up android ndk
         run: |
-          curl -s "https://dl.google.com/android/repository/android-ndk-${{ matrix.ndk-version }}.zip" -o ndk.zip
-          unzip -q -o ndk.zip -d .ndk
+          if [ ! -d ".ndk" ] || [ -z "$(ls -A .ndk 2>/dev/null)" ]; then
+            curl -s "https://dl.google.com/android/repository/android-ndk-${NDK_VERSION}.zip" -o ndk.zip
+            unzip -q -o ndk.zip -d .ndk
+          fi
           echo "ANDROID_NDK_ROOT=$PWD/.ndk/$(ls .ndk)" >> $GITHUB_ENV
+      - name: save android ndk
+        if: ${{ success() && steps.cache-ndk.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v5
+        with:
+          path: .ndk
+          key: ${{ steps.cache-ndk.outputs.cache-primary-key }}
+
+      - name: restore native sources
+        id: cache-src
+        uses: actions/cache/restore@v5
+        with:
+          path: src
+          key: ffmpeg-src-${{ env.NDK_VERSION }}-${{ hashFiles('scripts/**', 'tools/**', 'android.sh') }}
+      - name: restore prebuilt external libraries
+        id: cache-prebuilt
+        uses: actions/cache/restore@v5
+        with:
+          path: prebuilt
+          key: ffmpeg-prebuilt-${{ env.NDK_VERSION }}-${{ hashFiles('scripts/**', 'tools/**', 'android.sh') }}
+
+      - name: build all external libraries (no ffmpeg, no archive)
+        run: |
+          ./android.sh $COMMON_FLAGS $AUDIO_FLAGS $VIDEO_FLAGS \
+            --enable-libxml2 --enable-openssl \
+            --skip-ffmpeg --skip-ffmpeg-kit --no-archive
+
+      # Only persist caches on success so a failed/partial build never poisons the cache
+      # (the "already installed" check would otherwise skip a half-built library next time).
+      - name: save native sources
+        if: ${{ success() && steps.cache-src.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v5
+        with:
+          path: src
+          key: ${{ steps.cache-src.outputs.cache-primary-key }}
+      - name: save prebuilt external libraries
+        if: ${{ success() && steps.cache-prebuilt.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v5
+        with:
+          path: prebuilt
+          key: ${{ steps.cache-prebuilt.outputs.cache-primary-key }}
+
+      - name: print build logs
+        if: ${{ always() }}
+        run: cat build.log
+      - name: print ffbuild logs
+        if: ${{ failure() }}
+        run: '[[ -f ./src/ffmpeg/ffbuild/config.log ]] && tail -50 ./src/ffmpeg/ffbuild/config.log'
+
+  # ---------------------------------------------------------------------------
+  # VARIANT MATRIX
+  # Each variant restores the shared caches from the prime job, so all external
+  # libraries are reported "already built" and skipped. Only ffmpeg (variant-specific
+  # config) and the final ndk-build + AAR run here.
+  # ---------------------------------------------------------------------------
+  build-main-on-linux:
+    name: android main on linux
+    needs: build-libs
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        ffmpeg-version: [ 'min', 'https', 'audio', 'video', 'full' ]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - name: set up adopt jdk 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'adopt'
+          java-version: '17'
+      - name: install build tools for external libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y autoconf automake libtool pkg-config curl git doxygen nasm cmake gcc gperf texinfo yasm bison autogen wget autopoint meson ninja-build ragel groff gtk-doc-tools libtasn1-bin
+          python3 -m pip install --upgrade meson
+      - name: prerequisites
+        run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --uninstall "cmake;3.10.2.4988404" "cmake;3.18.1"
+
+      - name: restore android ndk
+        uses: actions/cache/restore@v5
+        with:
+          path: .ndk
+          key: ndk-${{ env.NDK_VERSION }}
+      - name: set up android ndk
+        run: |
+          if [ ! -d ".ndk" ] || [ -z "$(ls -A .ndk 2>/dev/null)" ]; then
+            curl -s "https://dl.google.com/android/repository/android-ndk-${NDK_VERSION}.zip" -o ndk.zip
+            unzip -q -o ndk.zip -d .ndk
+          fi
+          echo "ANDROID_NDK_ROOT=$PWD/.ndk/$(ls .ndk)" >> $GITHUB_ENV
+
+      - name: restore native sources
+        uses: actions/cache/restore@v5
+        with:
+          path: src
+          key: ffmpeg-src-${{ env.NDK_VERSION }}-${{ hashFiles('scripts/**', 'tools/**', 'android.sh') }}
+      - name: restore prebuilt external libraries
+        uses: actions/cache/restore@v5
+        with:
+          path: prebuilt
+          key: ffmpeg-prebuilt-${{ env.NDK_VERSION }}-${{ hashFiles('scripts/**', 'tools/**', 'android.sh') }}
+
+      - name: cache gradle
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('android/**/*.gradle', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-
+
       - name: run the build script
         # gnutls + gmp build to support https is not working because of some build issues ("clang: "all" is not a valid value for -march"). Hence we need to use openssl here. But openssl does not support x86 and x86_64 architectures.
-        # the proportion of x86 and x86_64 is very low, so we disable them to support https + speed up the build + minimize the size of the aar
+        # the proportion of x86 and x86_64 is very low, so we disable them to support https + speed up the build + minimize the size of the aar.
+        # the external libraries below were already compiled by the "prime shared native libraries" job, so ffmpeg-kit reports them as "already built" and only ffmpeg + the AAR are produced here.
         run: |
-          COMMON_FLAGS="--enable-android-media-codec --enable-android-zlib --disable-arm-v7a --disable-x86 --disable-x86-64"
-          # external libraries for each package, matching the ffmpeg-kit "audio"/"video"/"full" package definitions (README section "Packages")
-          AUDIO_FLAGS="--enable-lame --enable-libilbc --enable-libvorbis --enable-opencore-amr --enable-opus --enable-shine --enable-soxr --enable-speex --enable-twolame --enable-vo-amrwbenc"
-          VIDEO_FLAGS="--enable-dav1d --enable-fontconfig --enable-freetype --enable-fribidi --enable-kvazaar --enable-libass --enable-libiconv --enable-libtheora --enable-libvpx --enable-libwebp --enable-snappy --enable-zimg"
           case "${{ matrix.ffmpeg-version }}" in
             min)
               ./android.sh $COMMON_FLAGS
@@ -93,173 +230,8 @@ jobs:
         if: ${{ failure() }}
         run: '[[ -f ./src/ffmpeg/ffbuild/config.log ]] && tail -50 ./src/ffmpeg/ffbuild/config.log'
       - name: Archive artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-${{ matrix.ffmpeg-version }}-aar
           path: |
             prebuilt/bundle-android-aar
-
-  # build-main-https-on-linux:
-  #   name: android main on linux with https
-  #   runs-on: ubuntu-22.04
-  #   strategy:
-  #     matrix:
-  #       ndk-version: ['r27c-linux']
-  #   defaults:
-  #     run:
-  #       shell: bash
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: set up adopt jdk 17
-  #       uses: actions/setup-java@v4
-  #       with:
-  #         distribution: 'adopt'
-  #         java-version: '17'
-  #     - name: install deps
-  #       run: |
-  #         sudo apt-get update
-  #         sudo apt-get install -y libssl-dev
-  #     - name: prerequisites
-  #       run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --uninstall "cmake;3.10.2.4988404" "cmake;3.18.1"
-  #     - name: set up android ndk
-  #       run: |
-  #         curl -s "https://dl.google.com/android/repository/android-ndk-${{ matrix.ndk-version }}.zip" -o ndk.zip
-  #         unzip -q -o ndk.zip -d .ndk
-  #         echo "ANDROID_NDK_ROOT=$PWD/.ndk/$(ls .ndk)" >> $GITHUB_ENV
-  #     - name: run the build script
-  #       run: ./android.sh -d --enable-android-media-codec --enable-android-zlib --disable-arm-v7a --disable-x86 --disable-x86-64 --enable-openssl
-  #     - name: list files in prebuilt folder
-  #       run: ls -l prebuilt
-  #     - name: print build logs
-  #       if: ${{ always() }}
-  #       run: cat build.log
-  #     - name: print ffbuild logs
-  #       if: ${{ failure() }}
-  #       run: '[[ -f ./src/ffmpeg/ffbuild/config.log ]] && tail -50 ./src/ffmpeg/ffbuild/config.log'
-  #     - name: Archive artifacts
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: android-https-aar
-  #         path: |
-  #           prebuilt/bundle-android-aar
-        
-  # build-lts-on-linux:
-  #   name: android lts on linux
-  #   runs-on: ubuntu-22.04
-  #   strategy:
-  #     matrix:
-  #       ndk-version: [ 'r22b-linux-x86_64', 'r23b-linux' ]
-  #   defaults:
-  #     run:
-  #       shell: bash
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: set up adopt jdk 17
-  #       uses: actions/setup-java@v3
-  #       with:
-  #         distribution: 'adopt'
-  #         java-version: '17'
-  #     - name: prerequisites
-  #       run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --uninstall "cmake;3.10.2.4988404" "cmake;3.18.1"
-  #     - name: set up android ndk
-  #       run: |
-  #         curl -s "https://dl.google.com/android/repository/android-ndk-${{ matrix.ndk-version }}.zip" -o ndk.zip
-  #         unzip -q -o ndk.zip -d .ndk
-  #         echo "ANDROID_NDK_ROOT=$PWD/.ndk/$(ls .ndk)" >> $GITHUB_ENV
-  #     - name: run the build script
-  #       run: ./android.sh -d --lts --enable-android-media-codec --enable-android-zlib
-  #     - name: print build logs
-  #       if: ${{ always() }}
-  #       run: cat build.log
-  #     - name: print ffbuild logs
-  #       if: ${{ failure() }}
-  #       run: '[[ -f ./src/ffmpeg/ffbuild/config.log ]] && tail -50 ./src/ffmpeg/ffbuild/config.log'
-  # build-main-on-macos:
-  #   name: android main on macos
-  #   runs-on: macos-12
-  #   strategy:
-  #     matrix:
-  #       ndk-version: [ 'r22b-darwin-x86_64', 'r23b-darwin', 'r24-darwin', 'r25b-darwin' ]
-  #   defaults:
-  #     run:
-  #       shell: bash
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: set up adopt jdk 17
-  #       uses: actions/setup-java@v3
-  #       with:
-  #         distribution: 'adopt'
-  #         java-version: '17'
-  #     - name: set up android ndk
-  #       run: |
-  #         curl -s "https://dl.google.com/android/repository/android-ndk-${{ matrix.ndk-version }}.zip" -o ndk.zip
-  #         unzip -q -o ndk.zip -d .ndk
-  #         echo "ANDROID_NDK_ROOT=$PWD/.ndk/$(ls .ndk)" >> $GITHUB_ENV
-  #     - name: run the build script
-  #       run: ./android.sh -d --enable-android-media-codec --enable-android-zlib --disable-arm-v7a
-  #     - name: print build logs
-  #       if: ${{ always() }}
-  #       run: cat build.log
-  #     - name: print ffbuild logs
-  #       if: ${{ failure() }}
-  #       run: '[[ -f ./src/ffmpeg/ffbuild/config.log ]] && tail -50 ./src/ffmpeg/ffbuild/config.log'
-  # build-lts-on-macos:
-  #   name: android lts on macos
-  #   runs-on: macos-12
-  #   strategy:
-  #     matrix:
-  #       ndk-version: [ 'r22b-darwin-x86_64', 'r23b-darwin' ]
-  #   defaults:
-  #     run:
-  #       shell: bash
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: set up adopt jdk 17
-  #       uses: actions/setup-java@v3
-  #       with:
-  #         distribution: 'adopt'
-  #         java-version: '17'
-  #     - name: set up android ndk
-  #       run: |
-  #         curl -s "https://dl.google.com/android/repository/android-ndk-${{ matrix.ndk-version }}.zip" -o ndk.zip
-  #         unzip -q -o ndk.zip -d .ndk
-  #         echo "ANDROID_NDK_ROOT=$PWD/.ndk/$(ls .ndk)" >> $GITHUB_ENV
-  #     - name: run the build script
-  #       run: ./android.sh -d --lts --enable-android-media-codec --enable-android-zlib
-  #     - name: print build logs
-  #       if: ${{ always() }}
-  #       run: cat build.log
-  #     - name: print ffbuild logs
-  #       if: ${{ failure() }}
-  #       run: '[[ -f ./src/ffmpeg/ffbuild/config.log ]] && tail -50 ./src/ffmpeg/ffbuild/config.log'
-  # build-main-without-ffmpeg-kit-protocols-on-linux:
-  #   name: build without ffmpeg-kit protocols
-  #   runs-on: ubuntu-22.04
-  #   strategy:
-  #     matrix:
-  #       ndk-version: [ 'r22b-linux-x86_64' ]
-  #   defaults:
-  #     run:
-  #       shell: bash
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: set up adopt jdk 17
-  #       uses: actions/setup-java@v3
-  #       with:
-  #         distribution: 'adopt'
-  #         java-version: '17'
-  #     - name: prerequisites
-  #       run: ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --uninstall "cmake;3.10.2.4988404" "cmake;3.18.1"
-  #     - name: set up android ndk
-  #       run: |
-  #         curl -s "https://dl.google.com/android/repository/android-ndk-${{ matrix.ndk-version }}.zip" -o ndk.zip
-  #         unzip -q -o ndk.zip -d .ndk
-  #         echo "ANDROID_NDK_ROOT=$PWD/.ndk/$(ls .ndk)" >> $GITHUB_ENV
-  #     - name: run the build script
-  #       run: ./android.sh --no-ffmpeg-kit-protocols --disable-x86 --disable-x86-64 --disable-arm-v7a --disable-arm-v7a-neon
-  #     - name: print build logs
-  #       if: ${{ always() }}
-  #       run: cat build.log
-  #     - name: print ffbuild logs
-  #       if: ${{ failure() }}
-  #       run: '[[ -f ./src/ffmpeg/ffbuild/config.log ]] && tail -50 ./src/ffmpeg/ffbuild/config.log'
