@@ -28,6 +28,13 @@ export CXXFLAGS=$(get_cxxflags "${LIB_NAME}")
 export LDFLAGS=$(get_ldflags "${LIB_NAME}")
 export PKG_CONFIG_LIBDIR="${INSTALL_PKG_CONFIG_DIR}"
 
+# CMake 4 (shipped with Xcode 26 / macos-26 runners) removed compatibility with
+# cmake_minimum_required(VERSION < 3.5), which several bundled libraries still declare
+# (e.g. snappy 1.1.9: "Compatibility with CMake < 3.5 has been removed from CMake").
+# CMake honours this environment variable (since 3.31/4.0) as the floor for the policy
+# version, letting those old CMake projects configure without patching each CMakeLists.
+export CMAKE_POLICY_VERSION_MINIMUM=3.5
+
 cd "${BASEDIR}"/src/"${LIB_NAME}" || return 1
 
 LIB_INSTALL_PREFIX="${ENABLED_LIBRARY_PATH}"
