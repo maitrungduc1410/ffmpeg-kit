@@ -397,7 +397,13 @@ get_cxxflags() {
 }
 
 get_common_linked_libraries() {
-  local COMMON_LIBRARY_PATHS="-L${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/${TOOLCHAIN}/${HOST}/lib -L${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/${TOOLCHAIN}/sysroot/usr/lib/${HOST}/${API} -L${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/${TOOLCHAIN}/lib"
+  # NOTE: "${TOOLCHAIN}/lib" (the bare host lib dir) is intentionally NOT included here.
+  # On NDK r27 it holds the x86_64 HOST runtime libraries (libxml2.so, libc++abi.a, ...).
+  # If it stays on the target link path, lld grabs those host archives whenever a -l<name>
+  # collides (e.g. ffmpeg's -lxml2 in the "full" build, or libvpx's static C++ probe) and
+  # fails with "is incompatible with armelf_linux_eabi". The target runtime libraries live
+  # in the sysroot path below, so dropping the host dir is the correct cross-compile setup.
+  local COMMON_LIBRARY_PATHS="-L${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/${TOOLCHAIN}/${HOST}/lib -L${ANDROID_NDK_ROOT}/toolchains/llvm/prebuilt/${TOOLCHAIN}/sysroot/usr/lib/${HOST}/${API}"
 
   case $1 in
   ffmpeg)
