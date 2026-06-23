@@ -112,39 +112,55 @@ jobs:
           # POD_VERSION as a literal-dot regex for matching `pod trunk info` output.
           ver_regex="${POD_VERSION//./\\.}"
 
-          # `pod trunk push` validates the spec locally, then asks the trunk server to commit
-          # it to the cocoapods/specs repo. That server-side GitHub-commit step is flaky and
-          # frequently returns "Calling the GitHub commit API timed out" / a 500 even when the
-          # spec is valid (and the spec sometimes lands anyway). So: retry with backoff, and
-          # treat "already published on trunk" as success (covers a timed-out-but-landed push
-          # and idempotent re-runs of the same version).
+          # Authoritative check: is this exact version actually live on trunk? `pod trunk push`
+          # is unreliable for this - the trunk server frequently returns "internal server error" /
+          # "GitHub commit API timed out" even though the spec was committed (and CocoaPods only
+          # prints the "successfully published" banner / sends the email on the synchronous-success
+          # path). So we never trust the push exit code; we ask trunk directly.
+          pod_published() {
+            pod trunk info "$1" 2>/dev/null | grep -qE "(^|[[:space:]-])${ver_regex}([[:space:]]|\()"
+          }
+
+          # Push with retries, using pod_published as the source of truth for success.
           push_pod() {
             local podspec="$1" name="$2"
             for attempt in 1 2 3 4; do
               echo "==> ${name} ${POD_VERSION} (attempt ${attempt})"
               # --skip-import-validation: don't build an app that imports the binary framework
               # --allow-warnings: binary-only pods commonly emit lint warnings
-              if pod trunk push "${podspec}" --allow-warnings --skip-import-validation; then
+              # ignore the exit code on purpose; pod_published is what decides success
+              pod trunk push "${podspec}" --allow-warnings --skip-import-validation || true
+              if pod_published "${name}"; then
+                echo "    -> ${name} ${POD_VERSION} confirmed live on trunk"
                 return 0
               fi
-              if pod trunk info "${name}" 2>/dev/null | grep -qE "(^|[[:space:]-])${ver_regex}([[:space:]]|\()"; then
-                echo "    -> ${name} ${POD_VERSION} is already on trunk; treating as success"
-                return 0
-              fi
-              echo "    -> transient trunk failure; retrying in $((attempt * 15))s"
+              echo "    -> not on trunk yet; retrying in $((attempt * 15))s"
               sleep $((attempt * 15))
             done
             return 1
           }
 
-          failed=()
           for variant in min https audio video full; do
-            if ! push_pod "cocoapods/ffmpeg-mobile-${variant}.podspec" "ffmpeg-mobile-${variant}"; then
-              failed+=("${variant}")
-            fi
+            push_pod "cocoapods/ffmpeg-mobile-${variant}.podspec" "ffmpeg-mobile-${variant}" || true
             sleep 10  # space out pushes to ease the trunk GitHub-commit API throttling
           done
 
+          # Final, authoritative summary - the only thing that determines the job result.
+          echo ""
+          echo "================ publish summary (${POD_VERSION}) ================"
+          failed=()
+          for variant in min https audio video full; do
+            name="ffmpeg-mobile-${variant}"
+            if pod_published "${name}"; then
+              echo "  PUBLISHED  ${name} ${POD_VERSION}  ->  https://cocoapods.org/pods/${name}"
+            else
+              echo "  MISSING    ${name} ${POD_VERSION}"
+              failed+=("${variant}")
+            fi
+          done
+          echo "================================================================="
+
           if [ ${#failed[@]} -ne 0 ]; then
-            echo "::error::pod trunk push failed for: ${failed[*]}"; exit 1
+            echo "::error::not published on trunk: ${failed[*]}"; exit 1
           fi
+          echo "All 5 podspecs are live on CocoaPods trunk."
