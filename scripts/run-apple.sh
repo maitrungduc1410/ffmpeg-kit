@@ -17,7 +17,13 @@ set_toolchain_paths "${LIB_NAME}"
 
 # SET BUILD FLAGS
 HOST=$(get_host)
-export CFLAGS=$(get_cflags "${LIB_NAME}")
+# Xcode 26's clang defaults to C23, where an empty parameter list "()" means "(void)".
+# That breaks old K&R-style declarations in several external libraries (e.g. shine's
+# "void shine_mdct_initialise();" vs its definition that takes an argument), failing with
+# "conflicting types". Pin C17 (clang's previous default) so these legacy C sources build as
+# they always did. This flag comes after the autoconf-injected "-std=gnu23", so it wins.
+# Only external libraries are affected; ffmpeg and ffmpeg-kit set their own standard.
+export CFLAGS="$(get_cflags "${LIB_NAME}") -std=gnu17"
 export CXXFLAGS=$(get_cxxflags "${LIB_NAME}")
 export LDFLAGS=$(get_ldflags "${LIB_NAME}")
 export PKG_CONFIG_LIBDIR="${INSTALL_PKG_CONFIG_DIR}"
