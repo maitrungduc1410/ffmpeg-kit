@@ -1,0 +1,148 @@
+name: publish
+
+# Manual-only release workflow. It does NOT build anything: it reuses the
+# xcframework artifacts produced by the latest successful "ios build scripts" run,
+# zips them to a GitHub Release, and pushes the CocoaPods podspecs to trunk.
+# (Android publishing will be added here later.)
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'iOS release version, e.g. 6.0.3 (release tag ios-<version> + CocoaPods version)'
+        required: true
+        type: string
+      ios_build_run_id:
+        description: 'Optional: ios-build-scripts.yml run id to publish from (default: latest successful run on main)'
+        required: false
+        type: string
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # GITHUB RELEASE
+  # Pulls the already-built xcframeworks from the iOS build workflow (no rebuild),
+  # zips each variant (with the LGPL LICENSE) and attaches them to a single
+  # GitHub Release tagged ios-<release_version>. The CocoaPods podspecs
+  # (cocoapods/*.podspec) point at these assets via :http.
+  # ---------------------------------------------------------------------------
+  publish-ios-release:
+    name: publish ios release
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write  # create the release
+      actions: read    # read artifacts from the build workflow's runs
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - name: download variant xcframeworks from the latest ios build
+        uses: dawidd6/action-download-artifact@v9
+        with:
+          github_token: ${{ github.token }}
+          workflow: ios-build-scripts.yml
+          workflow_conclusion: success
+          branch: main
+          run_id: ${{ inputs.ios_build_run_id }}
+          name: ^ios-.*-xcframework$
+          name_is_regexp: true
+          path: artifacts
+          if_no_artifact_found: fail
+      - name: package each variant into a zip
+        run: |
+          mkdir -p dist
+          for variant in min https audio video full; do
+            src="artifacts/ios-${variant}-xcframework"
+            if [ ! -d "$src" ]; then
+              echo "::error::missing artifact for variant ${variant} (${src})"; exit 1
+            fi
+            # the artifact may unpack with the xcframeworks at its root or nested under
+            # bundle-apple-xcframework-ios, depending on upload-artifact's path handling
+            if [ -d "${src}/bundle-apple-xcframework-ios" ]; then
+              src="${src}/bundle-apple-xcframework-ios"
+            fi
+            # ship the LGPL license text inside each zip (referenced by the podspec's :file)
+            cp LICENSE "${src}/LICENSE"
+            ( cd "${src}" && zip -ry "${GITHUB_WORKSPACE}/dist/ffmpeg-mobile-${variant}.zip" . )
+          done
+          ls -lh dist
+      - name: create or update github release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="ios-${{ inputs.release_version }}"
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" \
+              --title "iOS ${{ inputs.release_version }}" \
+              --notes "Prebuilt FFmpegKit iOS xcframeworks (LGPL v3.0, no GPL libraries). Install via CocoaPods, e.g. pod 'ffmpeg-mobile-min', '~> ${{ inputs.release_version }}'."
+          fi
+          # --clobber so re-running the same version overwrites the existing assets
+          gh release upload "$tag" dist/*.zip --clobber
+
+  # ---------------------------------------------------------------------------
+  # COCOAPODS TRUNK
+  # Runs after the GitHub Release exists (the podspecs' :http source points at the
+  # release assets, and trunk validation downloads them). Authenticates via the
+  # COCOAPODS_TRUNK_TOKEN secret. Needs macOS because `pod trunk push` validates.
+  # ---------------------------------------------------------------------------
+  publish-cocoapods:
+    name: publish cocoapods trunk
+    needs: publish-ios-release
+    runs-on: macos-26
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - name: push podspecs to cocoapods trunk
+        env:
+          # add this repo secret: the password/token from your ~/.netrc entry for
+          # machine trunk.cocoapods.org (obtained via `pod trunk register`).
+          COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
+          # podspecs read this to set s.version, which must match the release tag ios-<version>.
+          POD_VERSION: ${{ inputs.release_version }}
+        run: |
+          if [ -z "${COCOAPODS_TRUNK_TOKEN}" ]; then
+            echo "::error::COCOAPODS_TRUNK_TOKEN secret is not set"; exit 1
+          fi
+
+          # POD_VERSION as a literal-dot regex for matching `pod trunk info` output.
+          ver_regex="${POD_VERSION//./\\.}"
+
+          # `pod trunk push` validates the spec locally, then asks the trunk server to commit
+          # it to the cocoapods/specs repo. That server-side GitHub-commit step is flaky and
+          # frequently returns "Calling the GitHub commit API timed out" / a 500 even when the
+          # spec is valid (and the spec sometimes lands anyway). So: retry with backoff, and
+          # treat "already published on trunk" as success (covers a timed-out-but-landed push
+          # and idempotent re-runs of the same version).
+          push_pod() {
+            local podspec="$1" name="$2"
+            for attempt in 1 2 3 4; do
+              echo "==> ${name} ${POD_VERSION} (attempt ${attempt})"
+              # --skip-import-validation: don't build an app that imports the binary framework
+              # --allow-warnings: binary-only pods commonly emit lint warnings
+              if pod trunk push "${podspec}" --allow-warnings --skip-import-validation; then
+                return 0
+              fi
+              if pod trunk info "${name}" 2>/dev/null | grep -qE "(^|[[:space:]-])${ver_regex}([[:space:]]|\()"; then
+                echo "    -> ${name} ${POD_VERSION} is already on trunk; treating as success"
+                return 0
+              fi
+              echo "    -> transient trunk failure; retrying in $((attempt * 15))s"
+              sleep $((attempt * 15))
+            done
+            return 1
+          }
+
+          failed=()
+          for variant in min https audio video full; do
+            if ! push_pod "cocoapods/ffmpeg-mobile-${variant}.podspec" "ffmpeg-mobile-${variant}"; then
+              failed+=("${variant}")
+            fi
+            sleep 10  # space out pushes to ease the trunk GitHub-commit API throttling
+          done
+
+          if [ ${#failed[@]} -ne 0 ]; then
+            echo "::error::pod trunk push failed for: ${failed[*]}"; exit 1
+          fi
