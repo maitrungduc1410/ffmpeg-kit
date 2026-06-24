@@ -34,15 +34,20 @@ on:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # GITHUB RELEASE
-  # Pulls the already-built xcframeworks from the iOS build workflow (no rebuild),
-  # zips each variant (with the LGPL LICENSE) and attaches them to a single
-  # GitHub Release tagged ios-<release_version>. The CocoaPods podspecs
-  # (cocoapods/*.podspec) point at these assets via :http.
+  # GITHUB RELEASE (shared by iOS + Android)
+  # Reuses artifacts from the latest successful build workflows (no rebuild) and
+  # publishes them to GitHub Releases. Each platform's steps are gated on the
+  # publish_ios / publish_android toggles:
+  #   * iOS    -> tag ios-<version>     : per-variant xcframework zips. The CocoaPods
+  #              podspecs (cocoapods/*.podspec) point at these assets via :http, so
+  #              this MUST exist before the cocoapods job runs.
+  #   * Android-> tag android-<version> : per-variant .aar files for direct download
+  #              (Maven Central is the primary channel; this is a convenience mirror
+  #              and runs before the Maven publish).
   # ---------------------------------------------------------------------------
-  publish-ios-release:
-    name: publish ios release
-    if: ${{ inputs.publish_ios }}
+  publish-github-release:
+    name: publish github release
+    if: ${{ inputs.publish_ios || inputs.publish_android }}
     runs-on: ubuntu-22.04
     permissions:
       contents: write  # create the release
@@ -52,7 +57,10 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v7
+
+      # ----- iOS -----
       - name: download variant xcframeworks from the latest ios build
+        if: ${{ inputs.publish_ios }}
         uses: dawidd6/action-download-artifact@v9
         with:
           github_token: ${{ github.token }}
@@ -64,13 +72,14 @@ jobs:
           run_id: ${{ inputs.ios_build_run_id }}
           name: ^ios-.*-xcframework$
           name_is_regexp: true
-          path: artifacts
+          path: ios-artifacts
           if_no_artifact_found: fail
-      - name: package each variant into a zip
+      - name: package each ios variant into a zip
+        if: ${{ inputs.publish_ios }}
         run: |
-          mkdir -p dist
+          mkdir -p ios-dist
           for variant in min https audio video full; do
-            src="artifacts/ios-${variant}-xcframework"
+            src="ios-artifacts/ios-${variant}-xcframework"
             if [ ! -d "$src" ]; then
               echo "::error::missing artifact for variant ${variant} (${src})"; exit 1
             fi
@@ -81,10 +90,11 @@ jobs:
             fi
             # ship the LGPL license text inside each zip (referenced by the podspec's :file)
             cp LICENSE "${src}/LICENSE"
-            ( cd "${src}" && zip -ry "${GITHUB_WORKSPACE}/dist/ffmpeg-mobile-${variant}.zip" . )
+            ( cd "${src}" && zip -ry "${GITHUB_WORKSPACE}/ios-dist/ffmpeg-mobile-${variant}.zip" . )
           done
-          ls -lh dist
-      - name: create or update github release
+          ls -lh ios-dist
+      - name: create or update ios github release
+        if: ${{ inputs.publish_ios }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -95,7 +105,48 @@ jobs:
               --notes "Prebuilt FFmpegKit iOS xcframeworks (LGPL v3.0, no GPL libraries). Install via CocoaPods, e.g. pod 'ffmpeg-mobile-min', '~> ${{ inputs.release_version }}'."
           fi
           # --clobber so re-running the same version overwrites the existing assets
-          gh release upload "$tag" dist/*.zip --clobber
+          gh release upload "$tag" ios-dist/*.zip --clobber
+
+      # ----- Android -----
+      - name: download variant aars from the latest android build
+        if: ${{ inputs.publish_android }}
+        uses: dawidd6/action-download-artifact@v9
+        with:
+          github_token: ${{ github.token }}
+          workflow: android-build-scripts.yml
+          workflow_conclusion: ${{ inputs.android_build_run_id == '' && 'success' || '' }}
+          branch: ${{ inputs.android_build_run_id == '' && 'main' || '' }}
+          run_id: ${{ inputs.android_build_run_id }}
+          name: ^android-.*-aar$
+          name_is_regexp: true
+          path: android-artifacts
+          if_no_artifact_found: fail
+      - name: collect each android variant's aar
+        if: ${{ inputs.publish_android }}
+        run: |
+          mkdir -p android-dist
+          for variant in min https audio video full; do
+            # each artifact contains bundle-android-aar/ffmpeg-kit/ffmpeg-kit.aar
+            aar="$(find "android-artifacts/android-${variant}-aar" -name '*.aar' | head -n1)"
+            if [ -z "${aar}" ]; then
+              echo "::error::missing aar for variant ${variant}"; exit 1
+            fi
+            # name it per-variant + version so the assets are unambiguous on the release page
+            cp "${aar}" "android-dist/ffmpeg-kit-${variant}-${{ inputs.release_version }}.aar"
+          done
+          ls -lh android-dist
+      - name: create or update android github release
+        if: ${{ inputs.publish_android }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="android-${{ inputs.release_version }}"
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" \
+              --title "Android ${{ inputs.release_version }}" \
+              --notes "Prebuilt FFmpegKit Android AARs (LGPL v3.0, no GPL libraries). Primary install is via Maven Central, e.g. implementation 'io.github.maitrungduc1410:ffmpeg-kit-min:${{ inputs.release_version }}'. These .aar files are a direct-download mirror."
+          fi
+          gh release upload "$tag" android-dist/*.aar --clobber
 
   # ---------------------------------------------------------------------------
   # COCOAPODS TRUNK
@@ -106,7 +157,7 @@ jobs:
   publish-cocoapods:
     name: publish cocoapods trunk
     if: ${{ inputs.publish_ios }}
-    needs: publish-ios-release
+    needs: publish-github-release
     runs-on: macos-26
     permissions:
       contents: read
@@ -194,6 +245,7 @@ jobs:
   publish-android-maven:
     name: publish android maven (${{ matrix.variant }})
     if: ${{ inputs.publish_android }}
+    needs: publish-github-release  # GitHub release first, then Maven Central
     runs-on: ubuntu-22.04
     permissions:
       contents: read  # read artifacts from the build workflow's runs
