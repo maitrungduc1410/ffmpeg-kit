@@ -86,3 +86,21 @@ There are five packages, each enabling a different set of external and system li
 </table>
 
 - On `iOS`, `iconv` is provided by the system, so `libiconv` listed above applies to the `Android` builds only.
+
+## Releasing
+
+> For maintainers. The platform builds run automatically on push (`android build scripts` / `ios build scripts`) and upload their artifacts. Releasing is a separate, **manual** step that reuses those artifacts — nothing is rebuilt.
+
+Run **Actions → `publish` → Run workflow** and set:
+
+- `release_version` — e.g. `6.0.6` (used for the release tags, the CocoaPods version, and the Maven version).
+- `publish_ios` / `publish_android` — toggle either platform on/off.
+- `ios_build_run_id` / `android_build_run_id` — optional; leave blank to use the latest successful build on `main`, or pin a specific build run to publish from.
+
+What it does:
+
+- **GitHub Releases** — iOS xcframework zips on tag `ios-<version>` (consumed by CocoaPods), Android `.aar`s on tag `android-<version>` (direct-download mirror).
+- **CocoaPods** — pushes the five `ffmpeg-mobile-*` podspecs to trunk.
+- **Maven Central** — publishes the five `io.github.maitrungduc1410:ffmpeg-kit-*` artifacts.
+
+Required repository secrets: `COCOAPODS_TRUNK_TOKEN` (iOS) and `MAVEN_CENTRAL_USERNAME`, `MAVEN_CENTRAL_PASSWORD`, `GPG_SIGNING_KEY`, `GPG_SIGNING_KEY_ID`, `GPG_SIGNING_PASSWORD` (Android).
