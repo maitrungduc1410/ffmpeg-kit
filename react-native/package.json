@@ -3,11 +3,11 @@
   "version": "7.1.5",
   "description": "FFmpegKit for React Native (New Architecture / TurboModule)",
   "main": "./lib/module/index.js",
-  "types": "./lib/typescript/src/index.d.ts",
+  "types": "./src/index.d.ts",
   "exports": {
     ".": {
       "react-native-ffmpegkit-source": "./src/index.js",
-      "types": "./lib/typescript/src/index.d.ts",
+      "types": "./src/index.d.ts",
       "default": "./lib/module/index.js"
     },
     "./package.json": "./package.json"
@@ -95,12 +95,6 @@
         "module",
         {
           "esm": true
-        }
-      ],
-      [
-        "typescript",
-        {
-          "project": "tsconfig.build.json"
         }
       ]
     ]
