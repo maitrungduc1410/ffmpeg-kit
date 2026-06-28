@@ -60,15 +60,15 @@ See [`android/README.md`](android/README.md) for the Android API.
 
 ### React Native
 
-For React Native apps, use the **[`@mtd1410/ffmpegkit`](react-native/README.md)** package. It is built
+For React Native apps, use the **[`@mtd1410/react-native-ffmpegkit`](react-native/README.md)** package. It is built
 for the **New Architecture** (TurboModule + Codegen) and wraps the same prebuilt binaries published here.
 
 ```sh
-npm install @mtd1410/ffmpegkit
+npm install @mtd1410/react-native-ffmpegkit
 ```
 
 ```js
-import { FFmpegKit, ReturnCode } from '@mtd1410/ffmpegkit';
+import { FFmpegKit, ReturnCode } from '@mtd1410/react-native-ffmpegkit';
 
 FFmpegKit.execute('-i file1.mp4 -c:v mpeg4 file2.mp4').then(async (session) => {
   const returnCode = await session.getReturnCode();

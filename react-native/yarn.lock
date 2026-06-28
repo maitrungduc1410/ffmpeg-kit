@@ -2084,9 +2084,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mtd1410/ffmpegkit@workspace:.":
+"@mtd1410/react-native-ffmpegkit@workspace:.":
   version: 0.0.0-use.local
-  resolution: "@mtd1410/ffmpegkit@workspace:."
+  resolution: "@mtd1410/react-native-ffmpegkit@workspace:."
   dependencies:
     "@commitlint/config-conventional": "npm:^21.0.2"
     "@eslint/compat": "npm:^2.1.0"

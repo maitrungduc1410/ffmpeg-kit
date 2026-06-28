@@ -1,4 +1,4 @@
-# @mtd1410/ffmpegkit
+# @mtd1410/react-native-ffmpegkit
 
 FFmpegKit for React Native, built for the **New Architecture** (TurboModule + Codegen).
 
@@ -12,7 +12,7 @@ Available variants: `min`, `https` (default), `audio`, `video`, `full`.
 ## Installation
 
 ```sh
-npm install @mtd1410/ffmpegkit
+npm install @mtd1410/react-native-ffmpegkit
 ```
 
 This package requires React Native 0.76+ with the New Architecture enabled.
@@ -41,7 +41,7 @@ cd ios && FFMPEGKIT_PACKAGE=full pod install
 1. Execute FFmpeg commands.
 
     ```js
-    import { FFmpegKit, ReturnCode } from '@mtd1410/ffmpegkit';
+    import { FFmpegKit, ReturnCode } from '@mtd1410/react-native-ffmpegkit';
 
     FFmpegKit.execute('-i file1.mp4 -c:v mpeg4 file2.mp4').then(async (session) => {
       const returnCode = await session.getReturnCode();
@@ -123,7 +123,7 @@ cd ios && FFMPEGKIT_PACKAGE=full pod install
 4. Execute `FFprobe` commands.
 
     ```js
-    import { FFprobeKit } from '@mtd1410/ffmpegkit';
+    import { FFprobeKit } from '@mtd1410/react-native-ffmpegkit';
 
     FFprobeKit.execute(ffprobeCommand).then(async (session) => {
 
@@ -135,7 +135,7 @@ cd ios && FFMPEGKIT_PACKAGE=full pod install
 5. Get media information for a file/url.
 
     ```js
-    import { FFprobeKit, FFmpegKitConfig } from '@mtd1410/ffmpegkit';
+    import { FFprobeKit, FFmpegKitConfig } from '@mtd1410/react-native-ffmpegkit';
 
     FFprobeKit.getMediaInformation(testUrl).then(async (session) => {
       const information = await session.getMediaInformation();

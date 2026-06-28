@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Text, View, StyleSheet } from 'react-native';
-import { FFmpegKitConfig } from '@mtd1410/ffmpegkit';
+import { FFmpegKitConfig } from '@mtd1410/react-native-ffmpegkit';
 
 export default function App() {
   const [version, setVersion] = useState<string>('loading…');

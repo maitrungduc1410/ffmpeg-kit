@@ -331,7 +331,7 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # NPM (React Native package)
-  # Publishes @mtd1410/ffmpegkit from the react-native/ folder to npm and mirrors
+  # Publishes @mtd1410/react-native-ffmpegkit from the react-native/ folder to npm and mirrors
   # the packed .tgz to a GitHub Release (tag react-native-<version>). The package
   # ships only JS + native source; the prebuilt FFmpeg binaries are pulled from
   # Maven Central (Android) / CocoaPods (iOS) at app build time, so this job is
@@ -381,7 +381,7 @@ jobs:
           if ! gh release view "$tag" >/dev/null 2>&1; then
             gh release create "$tag" \
               --title "React Native ${{ inputs.release_version }}" \
-              --notes "FFmpegKit for React Native (New Architecture / TurboModule). Install with: npm install @mtd1410/ffmpegkit"
+              --notes "FFmpegKit for React Native (New Architecture / TurboModule). Install with: npm install @mtd1410/react-native-ffmpegkit"
           fi
           # mirror the exact tarball that was published to npm
           gh release upload "$tag" ./*.tgz --clobber

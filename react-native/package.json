@@ -1,5 +1,5 @@
 {
-  "name": "@mtd1410/ffmpegkit",
+  "name": "@mtd1410/react-native-ffmpegkit",
   "version": "7.1.5",
   "description": "FFmpegKit for React Native (New Architecture / TurboModule)",
   "main": "./lib/module/index.js",
