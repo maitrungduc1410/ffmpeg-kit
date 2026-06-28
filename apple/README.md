@@ -8,7 +8,7 @@ licensing and platform support, see the [project README](../README.md).
 Add the `FFmpegKit` dependency to your `Podfile`:
 
 ```ruby
-pod 'ffmpeg-mobile-full', '~> 6.0'
+pod 'ffmpeg-mobile-full', '~> 7.1.5'
 ```
 
 Replace `ffmpeg-mobile-full` with the package you need: `ffmpeg-mobile-min`, `ffmpeg-mobile-https`,

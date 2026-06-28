@@ -23,6 +23,11 @@ on:
         required: false
         type: boolean
         default: true
+      publish_npm:
+        description: 'Publish React Native package to npm (+ GitHub Release with the .tgz)'
+        required: false
+        type: boolean
+        default: false
       ios_build_run_id:
         description: 'Optional: ios-build-scripts.yml run id to publish from (default: latest successful run on main)'
         required: false
@@ -323,3 +328,60 @@ jobs:
             -PffmpegKitPackage=${{ matrix.variant }} \
             -PffmpegKitVersion=${{ inputs.release_version }} \
             --no-configuration-cache --stacktrace
+
+  # ---------------------------------------------------------------------------
+  # NPM (React Native package)
+  # Publishes @mtd1410/ffmpegkit from the react-native/ folder to npm and mirrors
+  # the packed .tgz to a GitHub Release (tag react-native-<version>). The package
+  # ships only JS + native source; the prebuilt FFmpeg binaries are pulled from
+  # Maven Central (Android) / CocoaPods (iOS) at app build time, so this job is
+  # independent of the native build artifacts.
+  # ---------------------------------------------------------------------------
+  publish-npm:
+    name: publish npm
+    if: ${{ inputs.publish_npm }}
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write  # create the github release
+    defaults:
+      run:
+        shell: bash
+        working-directory: react-native
+    steps:
+      - uses: actions/checkout@v7
+      - name: set up node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: react-native/.nvmrc
+          registry-url: 'https://registry.npmjs.org'
+      - name: enable corepack (yarn)
+        run: corepack enable
+      - name: install dependencies
+        # no committed lockfile, and CI makes yarn immutable by default, so opt out
+        run: yarn install --no-immutable
+      - name: set package version
+        run: npm version "${{ inputs.release_version }}" --no-git-tag-version --allow-same-version
+      - name: build package (react-native-builder-bob)
+        run: yarn prepare
+      - name: pack tarball
+        run: npm pack
+      - name: publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN}" ]; then
+            echo "::error::NPM_TOKEN secret is not set"; exit 1
+          fi
+          npm publish --access public
+      - name: create or update npm github release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="react-native-${{ inputs.release_version }}"
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" \
+              --title "React Native ${{ inputs.release_version }}" \
+              --notes "FFmpegKit for React Native (New Architecture / TurboModule). Install with: npm install @mtd1410/ffmpegkit"
+          fi
+          # mirror the exact tarball that was published to npm
+          gh release upload "$tag" ./*.tgz --clobber

@@ -1,202 +1,47 @@
-# FFmpegKit for React Native
+# @mtd1410/ffmpegkit
 
-### 1. Features
-- Includes both `FFmpeg` and `FFprobe`
-- Supports
-  - Both `Android` and `iOS`
-  - FFmpeg `v6.0`
-  - `arm-v7a`, `arm-v7a-neon`, `arm64-v8a`, `x86` and `x86_64` architectures on Android
-  - `Android API Level 24` or later
-    - `API Level 16` on LTS releases
-  - `armv7`, `armv7s`, `arm64`, `arm64-simulator`, `i386`, `x86_64`, `x86_64-mac-catalyst` and `arm64-mac-catalyst` architectures on iOS
-  - `iOS SDK 12.1` or later
-    - `iOS SDK 10` on LTS releases
-  - Can process Storage Access Framework (SAF) Uris on Android
-  - 25 external libraries
+FFmpegKit for React Native, built for the **New Architecture** (TurboModule + Codegen).
 
-    `dav1d`, `fontconfig`, `freetype`, `fribidi`, `gmp`, `gnutls`, `kvazaar`, `lame`, `libass`, `libiconv`, `libilbc`, `libtheora`, `libvorbis`, `libvpx`, `libwebp`, `libxml2`, `opencore-amr`, `opus`, `shine`, `snappy`, `soxr`, `speex`, `twolame`, `vo-amrwbenc`, `zimg`
+It wraps the prebuilt FFmpegKit native binaries:
 
-  - 4 external libraries with GPL license
+- **Android** — Maven Central: `io.github.maitrungduc1410:ffmpeg-kit-<variant>:7.1.5`
+- **iOS** — CocoaPods: `ffmpeg-mobile-<variant>` (`~> 7.1.5`)
 
-    `vid.stab`, `x264`, `x265`, `xvidcore`
+Available variants: `min`, `https` (default), `audio`, `video`, `full`.
 
-  - `zlib` and `MediaCodec` Android system libraries
-  - `bzip2`, `iconv`, `libuuid`, `zlib` system libraries and `AudioToolbox`, `VideoToolbox`, `AVFoundation` system frameworks on iOS
-
-- Includes Typescript definitions
-- Licensed under `LGPL 3.0` by default, some packages licensed by `GPL v3.0` effectively
-
-### 2. Installation
+## Installation
 
 ```sh
-yarn add ffmpeg-kit-react-native
+npm install @mtd1410/ffmpegkit
 ```
 
-#### 2.1 Packages
+This package requires React Native 0.76+ with the New Architecture enabled.
 
-`FFmpeg` includes built-in encoders for some popular formats. However, there are certain external libraries that needs
-to be enabled in order to encode specific formats/codecs. For example, to encode an `mp3` file you need `lame` or
-`shine` library enabled. You have to install a `ffmpeg-kit-react-native` package that has at least one of them inside.
-To encode an `h264` video, you need to install a package with `x264` inside. To encode `vp8` or `vp9` videos, you need
-a `ffmpeg-kit-react-native` package with `libvpx` inside.
+### Selecting a package variant
 
-`ffmpeg-kit` provides eight packages that include different sets of external libraries. These packages are named
-according to the external libraries included. Refer to the
-[Packages](https://github.com/arthenica/ffmpeg-kit/wiki/Packages) wiki page to see the names of those
-packages and external libraries included in each one of them.
+The default native variant is `https`. To use a different one:
 
-##### 2.1.1 Package Names
+**Android** — set the variant (and optionally the version) in your app's `android/build.gradle`:
 
-The following table shows all package names and their respective API levels, iOS deployment targets defined in
-`ffmpeg-kit-react-native`.
+```gradle
+ext {
+  ffmpegKitPackage = "full"   // min | https | audio | video | full
+  ffmpegKitVersion = "7.1.5"
+}
+```
 
-<table>
-<thead>
-<tr>
-<th align="center">Package</th>
-<th align="center" colspan="3">Main Release</th>
-<th align="center" colspan="3">LTS Release</th>
-</tr>
-<tr>
-<th align="center"></th>
-<th align="center">Name</th>
-<th align="center">Android<br>API Level</th>
-<th align="center">iOS Minimum<br>Deployment Target</th>
-<th align="center">Name</th>
-<th align="center">Android<br>API Level</th>
-<th align="center">iOS Minimum<br>Deployment Target</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td align="center">min</td>
-<td align="center">min</td>
-<td align="center">24</td>
-<td align="center">12.1</td>
-<td align="center">min-lts</td>
-<td align="center">16</td>
-<td align="center">10</td>
-</tr>
-<tr>
-<td align="center">min-gpl</td>
-<td align="center">min-gpl</td>
-<td align="center">24</td>
-<td align="center">12.1</td>
-<td align="center">min-gpl-lts</td>
-<td align="center">16</td>
-<td align="center">10</td>
-</tr>
-<tr>
-<td align="center">https</td>
-<td align="center">(*) https</td>
-<td align="center">24</td>
-<td align="center">12.1</td>
-<td align="center">https-lts</td>
-<td align="center">16</td>
-<td align="center">10</td>
-</tr>
-<tr>
-<td align="center">https-gpl</td>
-<td align="center">https-gpl</td>
-<td align="center">24</td>
-<td align="center">12.1</td>
-<td align="center">https-gpl-lts</td>
-<td align="center">16</td>
-<td align="center">10</td>
-</tr>
-<tr>
-<td align="center">audio</td>
-<td align="center">audio</td>
-<td align="center">24</td>
-<td align="center">12.1</td>
-<td align="center">audio-lts</td>
-<td align="center">16</td>
-<td align="center">10</td>
-</tr>
-<tr>
-<td align="center">video</td>
-<td align="center">video</td>
-<td align="center">24</td>
-<td align="center">12.1</td>
-<td align="center">video-lts</td>
-<td align="center">16</td>
-<td align="center">10</td>
-</tr>
-<tr>
-<td align="center">full</td>
-<td align="center">full</td>
-<td align="center">24</td>
-<td align="center">12.1</td>
-<td align="center">full-lts</td>
-<td align="center">16</td>
-<td align="center">10</td>
-</tr>
-<tr>
-<td align="center">full-gpl</td>
-<td align="center">full-gpl</td>
-<td align="center">24</td>
-<td align="center">12.1</td>
-<td align="center">full-gpl-lts</td>
-<td align="center">16</td>
-<td align="center">10</td>
-</tr>
-</tbody>
-</table>
+**iOS** — set the `FFMPEGKIT_PACKAGE` environment variable when installing pods:
 
-(*) - Main `https` package is the default package
+```sh
+cd ios && FFMPEGKIT_PACKAGE=full pod install
+```
 
-#### 2.2 Enabling Packages
-
-Installing `ffmpeg-kit-react-native` enables the `https` package by default. It is possible to enable other
-packages using the instructions below.
-
-##### 2.2.1 Enabling a Package on Android
-
-- Edit `android/build.gradle` file and add the package name in `ext.ffmpegKitPackage` variable.
-
-    ```gradle
-    ext {
-        ffmpegKitPackage = "<package name>"
-    }
-
-    ```
-
-##### 2.2.2 Enabling a Package on iOS
-
-- Edit `ios/Podfile` file and add the package name as `subspec`. After that run `pod install` again.
-
-    ```ruby
-    pod 'ffmpeg-kit-react-native', :subspecs => ['<package name>'], :podspec => '../node_modules/ffmpeg-kit-react-native/ffmpeg-kit-react-native.podspec'
-    ```
-
-- Note that if you have `use_native_modules!` in your `Podfile`, specifying a `subspec` may cause the following error.
-  You can fix it by defining `ffmpeg-kit-react-native` dependency before `use_native_modules!` in your `Podfile`.
-
-  ```
-  [!] There are multiple dependencies with different sources for `ffmpeg-kit-react-native` in `Podfile`:
-
-  - ffmpeg-kit-react-native (from `../node_modules/ffmpeg-kit-react-native`)
-  - ffmpeg-kit-react-native/video (from `../node_modules/ffmpeg-kit-react-native/ffmpeg-kit-react-native.podspec`)
-  ```
-
-#### 2.3 Enabling LTS Releases
-
-In order to install the `LTS` variant, install the `https-lts` package using instructions in `2.2` or append `-lts` to
-the package name you are using.
-
-#### 2.4 LTS Releases
-
-`ffmpeg-kit-react-native` is published in two variants: `Main Release` and `LTS Release`. Both releases share the
-same source code but is built with different settings (Architectures, API Level, iOS Min SDK, etc.). Refer to the
-[LTS Releases](https://github.com/arthenica/ffmpeg-kit/wiki/LTS-Releases) wiki page to see how they differ from each
-other.
-
-### 3. Using
+## Usage
 
 1. Execute FFmpeg commands.
 
     ```js
-    import { FFmpegKit } from 'ffmpeg-kit-react-native';
+    import { FFmpegKit, ReturnCode } from '@mtd1410/ffmpegkit';
 
     FFmpegKit.execute('-i file1.mp4 -c:v mpeg4 file2.mp4').then(async (session) => {
       const returnCode = await session.getReturnCode();
@@ -236,7 +81,7 @@ other.
       const state = await session.getState();
 
       // Return code for completed sessions. Will be undefined if session is still running or FFmpegKit fails to run it
-      const returnCode = await session.getReturnCode()
+      const returnCode = await session.getReturnCode();
 
       const startTime = session.getStartTime();
       const endTime = await session.getEndTime();
@@ -246,7 +91,7 @@ other.
       const output = await session.getOutput();
 
       // The stack trace if FFmpegKit fails to run a command
-      const failStackTrace = await session.getFailStackTrace()
+      const failStackTrace = await session.getFailStackTrace();
 
       // The list of logs generated for this execution
       const logs = await session.getLogs();
@@ -278,6 +123,8 @@ other.
 4. Execute `FFprobe` commands.
 
     ```js
+    import { FFprobeKit } from '@mtd1410/ffmpegkit';
+
     FFprobeKit.execute(ffprobeCommand).then(async (session) => {
 
       // CALLED WHEN SESSION IS EXECUTED
@@ -288,6 +135,8 @@ other.
 5. Get media information for a file/url.
 
     ```js
+    import { FFprobeKit, FFmpegKitConfig } from '@mtd1410/ffmpegkit';
+
     FFprobeKit.getMediaInformation(testUrl).then(async (session) => {
       const information = await session.getMediaInformation();
 
@@ -358,6 +207,7 @@ other.
     ```
 
 9. Enable global callbacks.
+
   - Session type specific Complete Callbacks, called when an async session has been completed
 
     ```js
@@ -396,19 +246,19 @@ other.
     FFmpegKitConfig.setFontDirectoryList(["/system/fonts", "/System/Library/Fonts", "<folder with fonts>"]);
     ```
 
-### 4. Test Application
+See the [Android](../android/README.md) and [Apple](../apple/README.md) READMEs for
+the full FFmpegKit API reference (the JavaScript API mirrors the native one).
 
-You can see how `FFmpegKit` is used inside an application by running `react-native` test applications developed under
-the [FFmpegKit Test](https://github.com/arthenica/ffmpeg-kit-test) project.
+## Contributing
 
-### 5. Tips
+- [Development workflow](CONTRIBUTING.md#development-workflow)
+- [Sending a pull request](CONTRIBUTING.md#sending-a-pull-request)
+- [Code of conduct](CODE_OF_CONDUCT.md)
 
-See [Tips](https://github.com/arthenica/ffmpeg-kit/wiki/Tips) wiki page.
+## License
 
-### 6. License
+LGPL-3.0-or-later (same as FFmpegKit, no GPL libraries are bundled).
 
-See [License](https://github.com/arthenica/ffmpeg-kit/wiki/License) wiki page.
+---
 
-### 7. Patents
-
-See [Patents](https://github.com/arthenica/ffmpeg-kit/wiki/Patents) wiki page.
+Made with [create-react-native-library](https://github.com/callstack/react-native-builder-bob)

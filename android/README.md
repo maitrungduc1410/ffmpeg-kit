@@ -13,7 +13,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'io.github.maitrungduc1410:ffmpeg-kit-full:6.0.1'
+    implementation 'io.github.maitrungduc1410:ffmpeg-kit-full:7.1.5'
 }
 ```
 

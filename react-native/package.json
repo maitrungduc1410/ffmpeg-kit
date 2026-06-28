@@ -1,107 +1,137 @@
 {
-  "name": "ffmpeg-kit-react-native",
-  "version": "6.0.2",
-  "description": "FFmpeg Kit for React Native",
-  "main": "src/index",
-  "types": "src/index.d.ts",
-  "react-native": "src/index",
-  "source": "src/index",
+  "name": "@mtd1410/ffmpegkit",
+  "version": "7.1.5",
+  "description": "FFmpegKit for React Native (New Architecture / TurboModule)",
+  "main": "./lib/module/index.js",
+  "types": "./lib/typescript/src/index.d.ts",
+  "exports": {
+    ".": {
+      "react-native-ffmpegkit-source": "./src/index.js",
+      "types": "./lib/typescript/src/index.d.ts",
+      "default": "./lib/module/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "lib",
+    "android",
+    "ios",
+    "cpp",
+    "*.podspec",
+    "react-native.config.js",
+    "!ios/build",
+    "!android/build",
+    "!android/gradle",
+    "!android/gradlew",
+    "!android/gradlew.bat",
+    "!android/local.properties",
+    "!**/__tests__",
+    "!**/__fixtures__",
+    "!**/__mocks__",
+    "!**/.*"
+  ],
   "scripts": {
-    "test": "jest",
-    "lint": "eslint \"**/*.{js,ts,tsx}\"",
-    "release": "release-it"
+    "example": "yarn workspace react-native-ffmpegkit-example",
+    "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
+    "prepare": "bob build",
+    "typecheck": "tsc",
+    "lint": "eslint \"**/*.{js,ts,tsx}\""
   },
   "keywords": [
     "react-native",
-    "android",
-    "ffmpeg",
-    "ffmpeg-kit",
-    "ios"
+    "ios",
+    "android"
   ],
-  "repository": "https://github.com/arthenica/ffmpeg-kit",
-  "author": "ARTHENICA <open-source@arthenica.com> (https://www.arthenica.com)",
-  "license": "LGPL-3.0",
-  "bugs": {
-    "url": "https://github.com/arthenica/ffmpeg-kit/issues"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maitrungduc1410/ffmpeg-kit.git",
+    "directory": "react-native"
   },
-  "homepage": "https://github.com/arthenica/ffmpeg-kit",
+  "author": "Duc Trung Mai <maitrungduc1410@gmail.com> (https://github.com/maitrungduc1410)",
+  "license": "LGPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/maitrungduc1410/ffmpeg-kit/issues"
+  },
+  "homepage": "https://github.com/maitrungduc1410/ffmpeg-kit#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
-    "@commitlint/config-conventional": "^17.7.0",
-    "@react-native-community/eslint-config": "^2.0.0",
-    "@release-it/conventional-changelog": "^7.0.0",
-    "@types/jest": "^29.5.4",
-    "@types/react": "^16.9.19",
-    "@types/react-native": "^0.62.13",
-    "commitlint": "^17.7.1",
-    "eslint": "^8.48.0",
-    "eslint-config-prettier": "^9.0.0",
-    "eslint-plugin-prettier": "^5.0.0",
-    "jest": "^29.6.4",
-    "pod-install": "^0.1.39",
-    "prettier": "^3.0.2",
-    "react": "^16.13.1",
-    "react-native": "^0.63.4",
-    "release-it": "^16.1.5"
+    "@commitlint/config-conventional": "^21.0.2",
+    "@eslint/compat": "^2.1.0",
+    "@eslint/eslintrc": "^3.3.5",
+    "@eslint/js": "^10.0.1",
+    "@react-native/babel-preset": "0.85.0",
+    "@react-native/eslint-config": "0.85.0",
+    "@types/react": "^19.2.0",
+    "commitlint": "^21.0.2",
+    "del-cli": "^7.0.0",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-ft-flow": "^3.0.11",
+    "eslint-plugin-prettier": "^5.5.6",
+    "lefthook": "^2.1.9",
+    "prettier": "^3.8.3",
+    "react": "19.2.3",
+    "react-native": "0.85.0",
+    "react-native-builder-bob": "^0.43.0",
+    "turbo": "^2.9.16",
+    "typescript": "^6.0.3"
   },
   "peerDependencies": {
     "react": "*",
     "react-native": "*"
   },
-  "jest": {
-    "preset": "react-native"
-  },
-  "commitlint": {
-    "extends": [
-      "@commitlint/config-conventional"
-    ]
-  },
-  "release-it": {
-    "git": {
-      "commitMessage": "chore: release ${version}",
-      "tagName": "v${version}"
-    },
-    "npm": {
-      "publish": true
-    },
-    "github": {
-      "release": true
-    },
-    "plugins": {
-      "@release-it/conventional-changelog": {
-        "preset": "angular"
-      }
-    }
-  },
-  "eslintConfig": {
-    "root": true,
-    "extends": [
-      "@react-native-community",
-      "prettier"
-    ],
-    "rules": {
-      "prettier/prettier": [
-        "error",
+  "workspaces": [
+    "example"
+  ],
+  "packageManager": "yarn@4.11.0",
+  "react-native-builder-bob": {
+    "source": "src",
+    "output": "lib",
+    "targets": [
+      [
+        "module",
         {
-          "quoteProps": "consistent",
-          "singleQuote": true,
-          "tabWidth": 2,
-          "trailingComma": "es5",
-          "useTabs": false
+          "esm": true
+        }
+      ],
+      [
+        "typescript",
+        {
+          "project": "tsconfig.build.json"
         }
       ]
+    ]
+  },
+  "codegenConfig": {
+    "name": "FfmpegkitSpec",
+    "type": "modules",
+    "jsSrcsDir": "src",
+    "android": {
+      "javaPackageName": "com.ffmpegkit"
     }
   },
-  "eslintIgnore": [
-    "node_modules/"
-  ],
   "prettier": {
     "quoteProps": "consistent",
     "singleQuote": true,
     "tabWidth": 2,
     "trailingComma": "es5",
     "useTabs": false
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  },
+  "create-react-native-library": {
+    "type": "turbo-module",
+    "languages": "kotlin-objc",
+    "tools": [
+      "eslint",
+      "lefthook"
+    ],
+    "version": "0.63.0"
   }
 }

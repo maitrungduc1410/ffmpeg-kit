@@ -1,129 +1,82 @@
 buildscript {
+  ext.Ffmpegkit = [
+    kotlinVersion: "2.0.21",
+    minSdkVersion: 24,
+    compileSdkVersion: 36,
+    // FFmpegKit native binary variant + version. Override per-app via
+    // ext { ffmpegKitPackage = "full" } in your project's android/build.gradle,
+    // or via -PffmpegKitPackage / -PffmpegKitVersion on the gradle command line.
+    // Available variants: min, https, audio, video, full.
+    ffmpegKitPackage: "https",
+    ffmpegKitVersion: "7.1.5"
+  ]
+
+  ext.getExtOrDefault = { prop ->
+    if (rootProject.ext.has(prop)) {
+      return rootProject.ext.get(prop)
+    }
+
+    return Ffmpegkit[prop]
+  }
+
+  // Resolve a property from (in order): -P<prop> command-line/gradle.properties,
+  // rootProject.ext.<prop>, then the Ffmpegkit defaults above.
+  ext.resolveFFmpegKitProp = { prop ->
+    if (project.hasProperty(prop)) {
+      return project.property(prop)
+    }
+    if (rootProject.ext.has(prop)) {
+      return rootProject.ext.get(prop)
+    }
+
+    return Ffmpegkit[prop]
+  }
+
   repositories {
     google()
     mavenCentral()
   }
 
   dependencies {
-    classpath 'com.android.tools.build:gradle:8.1.0'
+    classpath "com.android.tools.build:gradle:8.7.2"
+    // noinspection DifferentKotlinGradleVersion
+    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${getExtOrDefault('kotlinVersion')}"
   }
 }
 
-apply plugin: 'com.android.library'
 
-static def safePackageName(String packageName) {
-  packageName.replace("-lts", "")
-}
+apply plugin: "com.android.library"
+apply plugin: "kotlin-android"
 
-def safePackageVersion(String packageName) {
-  def version = project.properties['ffmpegKit.android.main.version']
-  def ltsVersion = project.properties['ffmpegKit.android.lts.version']
-  packageName.contains("-lts") ? ltsVersion + ".LTS" : version
-}
-
-def safeExtGet(String prop, String fallback) {
-  rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
-}
+apply plugin: "com.facebook.react"
 
 android {
-  if (project.android.hasProperty("namespace")) {
-    namespace 'com.arthenica.ffmpegkit.reactnative'
-  }
+  namespace "com.ffmpegkit"
 
-  compileSdkVersion 33
+  compileSdkVersion getExtOrDefault("compileSdkVersion")
 
   defaultConfig {
-    minSdkVersion safeExtGet('ffmpegKitPackage', 'https').contains("-lts") ? 16 : 24
-    targetSdkVersion 33
-    versionCode 602
-    versionName "6.0.2"
+    minSdkVersion getExtOrDefault("minSdkVersion")
   }
 
-  buildTypes {
-    release {
-      minifyEnabled false
-    }
-  }
-  lintOptions {
-    disable 'GradleCompatible'
-  }
   compileOptions {
-    sourceCompatibility JavaVersion.VERSION_11
-    targetCompatibility JavaVersion.VERSION_11
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
   }
 }
 
 repositories {
   mavenCentral()
   google()
-
-  def found = false
-  def defaultDir = null
-  def androidSourcesName = 'React Native sources'
-
-  if (rootProject.ext.has('reactNativeAndroidRoot')) {
-    defaultDir = rootProject.ext.get('reactNativeAndroidRoot')
-  } else {
-    defaultDir = new File(
-      projectDir,
-      'node_modules/react-native/android'
-    )
-  }
-
-  if (defaultDir.exists()) {
-    maven {
-      url defaultDir.toString()
-      name androidSourcesName
-    }
-
-    logger.info(":${project.name}:reactNativeAndroidRoot ${defaultDir.canonicalPath}")
-    found = true
-  } else {
-    def parentDir = rootProject.projectDir
-
-    1.upto(5, {
-      if (found) return true
-      parentDir = parentDir.parentFile
-
-      def androidSourcesDir = new File(
-        parentDir,
-        'node_modules/react-native'
-      )
-
-      def androidPrebuiltBinaryDir = new File(
-        parentDir,
-        'node_modules/react-native/android'
-      )
-
-      if (androidPrebuiltBinaryDir.exists()) {
-        maven {
-          url androidPrebuiltBinaryDir.toString()
-          name androidSourcesName
-        }
-
-        logger.info(":${project.name}:reactNativeAndroidRoot ${androidPrebuiltBinaryDir.canonicalPath}")
-        found = true
-      } else if (androidSourcesDir.exists()) {
-        maven {
-          url androidSourcesDir.toString()
-          name androidSourcesName
-        }
-
-        logger.info(":${project.name}:reactNativeAndroidRoot ${androidSourcesDir.canonicalPath}")
-        found = true
-      }
-    })
-  }
-
-  if (!found) {
-    throw new GradleException(
-      "${project.name}: unable to locate React Native android sources. " +
-        "Ensure you have you installed React Native as a dependency in your project and try again."
-    )
-  }
 }
 
 dependencies {
-  api 'com.facebook.react:react-native:+'
-  implementation 'com.arthenica:ffmpeg-kit-' + safePackageName(safeExtGet('ffmpegKitPackage', 'https')) + ':' + safePackageVersion(safeExtGet('ffmpegKitPackage', 'https'))
+  implementation "com.facebook.react:react-android"
+
+  // FFmpegKit prebuilt native binaries, published to Maven Central under
+  // io.github.maitrungduc1410. The variant + version are resolved from the
+  // ffmpegKitPackage / ffmpegKitVersion properties (see buildscript ext above).
+  def ffmpegKitPackage = resolveFFmpegKitProp("ffmpegKitPackage")
+  def ffmpegKitVersion = resolveFFmpegKitProp("ffmpegKitVersion")
+  implementation "io.github.maitrungduc1410:ffmpeg-kit-${ffmpegKitPackage}:${ffmpegKitVersion}"
 }

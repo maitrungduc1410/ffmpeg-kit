@@ -2,6 +2,16 @@
 
 > A community-maintained rebuild of [`arthenica/ffmpeg-kit`](https://github.com/arthenica/ffmpeg-kit) for **Android** and **iOS**.
 
+## Table of contents
+
+- [About](#about)
+- [Usage](#usage)
+  - [iOS (CocoaPods)](#ios-cocoapods)
+  - [Android (Gradle)](#android-gradle)
+  - [React Native](#react-native)
+- [Packages](#packages)
+- [Releasing](#releasing)
+
 ## About
 
 The original [`ffmpeg-kit`](https://github.com/arthenica/ffmpeg-kit) by Arthenica has been **officially retired** — the project is no longer maintained and all of its previously released prebuilt binaries are being removed from the package registries.
@@ -47,6 +57,30 @@ dependencies {
 ```
 
 See [`android/README.md`](android/README.md) for the Android API.
+
+### React Native
+
+For React Native apps, use the **[`@mtd1410/ffmpegkit`](react-native/README.md)** package. It is built
+for the **New Architecture** (TurboModule + Codegen) and wraps the same prebuilt binaries published here.
+
+```sh
+npm install @mtd1410/ffmpegkit
+```
+
+```js
+import { FFmpegKit, ReturnCode } from '@mtd1410/ffmpegkit';
+
+FFmpegKit.execute('-i file1.mp4 -c:v mpeg4 file2.mp4').then(async (session) => {
+  const returnCode = await session.getReturnCode();
+
+  if (ReturnCode.isSuccess(returnCode)) {
+    // SUCCESS
+  }
+});
+```
+
+See [`react-native/README.md`](react-native/README.md) for installation, selecting a package variant,
+and the full JavaScript API usage.
 
 > Use the latest published version; the examples above may not reflect the most recent release.
 
