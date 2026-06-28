@@ -9,7 +9,7 @@ import com.vanniktech.maven.publish.SonatypeHost
 // Passed from CI as -PffmpegKitPackage=<variant> -PffmpegKitVersion=<x.y.z>.
 // Defaults keep local/manual `assembleRelease` working without extra flags.
 def ffmpegKitPackage = (project.findProperty("ffmpegKitPackage") ?: "https").toString()
-def ffmpegKitVersion = (project.findProperty("ffmpegKitVersion") ?: "6.0.1").toString()
+def ffmpegKitVersion = (project.findProperty("ffmpegKitVersion") ?: "7.1.5").toString()
 
 android {
     if (project.android.hasProperty("namespace")) {

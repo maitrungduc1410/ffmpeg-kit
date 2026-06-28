@@ -11,7 +11,7 @@ Because our applications still depend on it, this repository **rebuilds and repu
 A few important notes:
 
 - **No GPL builds.** To avoid `GPL` licensing obligations, no `GPL`-licensed libraries (e.g. `x264`, `x265`, `xvidcore`, `vid.stab`) are enabled and no `-gpl` packages are published. Everything here is built under `LGPL v3.0`.
-- **FFmpeg version.** Currently built against **FFmpeg up to v6**.
+- **FFmpeg version.** Currently built against **FFmpeg 7.1**.
 - **Platforms.** Only **Android** and **iOS** are supported and published.
 
 ## Usage
@@ -23,11 +23,11 @@ For the full API (running commands, sessions, callbacks, FFprobe, etc.) see the 
 
 ```ruby
 # Podfile
-pod 'ffmpeg-mobile-min', '~> 6.0'
-# pod 'ffmpeg-mobile-https', '~> 6.0'
-# pod 'ffmpeg-mobile-audio', '~> 6.0'
-# pod 'ffmpeg-mobile-video', '~> 6.0'
-# pod 'ffmpeg-mobile-full',  '~> 6.0'
+pod 'ffmpeg-mobile-min', '~> 7.1'
+# pod 'ffmpeg-mobile-https', '~> 7.1'
+# pod 'ffmpeg-mobile-audio', '~> 7.1'
+# pod 'ffmpeg-mobile-video', '~> 7.1'
+# pod 'ffmpeg-mobile-full',  '~> 7.1'
 ```
 
 See [`apple/README.md`](apple/README.md) for the iOS API.
@@ -38,11 +38,11 @@ Published to Maven Central under the `io.github.maitrungduc1410` group.
 
 ```groovy
 dependencies {
-    implementation 'io.github.maitrungduc1410:ffmpeg-kit-min:6.0.1'
-    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-https:6.0.1'
-    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-audio:6.0.1'
-    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-video:6.0.1'
-    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-full:6.0.1'
+    implementation 'io.github.maitrungduc1410:ffmpeg-kit-min:7.1.5'
+    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-https:7.1.5'
+    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-audio:7.1.5'
+    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-video:7.1.5'
+    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-full:7.1.5'
 }
 ```
 
@@ -96,6 +96,7 @@ Run **Actions → `publish` → Run workflow** and set:
 - `release_version` — e.g. `6.0.6` (used for the release tags, the CocoaPods version, and the Maven version).
 - `publish_ios` / `publish_android` — toggle either platform on/off.
 - `ios_build_run_id` / `android_build_run_id` — optional; leave blank to use the latest successful build on `main`, or pin a specific build run to publish from.
+- `source_repo` — optional; `owner/repo` to pull the prebuilt artifacts from instead of this repo (e.g. a clone repo where CI runs the long builds, so the main repo only spends quota on publishing). Requires a `CLONE_REPO_TOKEN` secret — a PAT that can read that repo's Actions (a classic PAT with `public_repo`, or a fine-grained PAT created under the source repo's owner with Actions: Read). Leave blank to use this repo.
 
 What it does:
 
@@ -103,4 +104,4 @@ What it does:
 - **CocoaPods** — pushes the five `ffmpeg-mobile-*` podspecs to trunk.
 - **Maven Central** — publishes the five `io.github.maitrungduc1410:ffmpeg-kit-*` artifacts.
 
-Required repository secrets: `COCOAPODS_TRUNK_TOKEN` (iOS) and `MAVEN_CENTRAL_USERNAME`, `MAVEN_CENTRAL_PASSWORD`, `GPG_SIGNING_KEY`, `GPG_SIGNING_KEY_ID`, `GPG_SIGNING_PASSWORD` (Android).
+Required repository secrets: `COCOAPODS_TRUNK_TOKEN` (iOS) and `MAVEN_CENTRAL_USERNAME`, `MAVEN_CENTRAL_PASSWORD`, `GPG_SIGNING_KEY`, `GPG_SIGNING_KEY_ID`, `GPG_SIGNING_PASSWORD` (Android). Optionally `CLONE_REPO_TOKEN` when `source_repo` is used.

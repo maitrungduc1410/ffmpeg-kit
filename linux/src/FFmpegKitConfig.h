@@ -42,7 +42,7 @@ namespace ffmpegkit {
         public:
 
             /** Global library version */
-            static constexpr const char* FFmpegKitVersion = "6.0";
+            static constexpr const char* FFmpegKitVersion = "7.1";
 
             /**
              * Prefix of named pipes created by ffmpeg-kit.

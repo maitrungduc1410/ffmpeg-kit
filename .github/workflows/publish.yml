@@ -31,6 +31,10 @@ on:
         description: 'Optional: android-build-scripts.yml run id to publish from (default: latest successful run on main)'
         required: false
         type: string
+      source_repo:
+        description: 'Optional: owner/repo to pull prebuilt artifacts from instead of this repo (e.g. a clone repo used for CI). Requires the CLONE_REPO_TOKEN secret (a PAT that can read that repo''s Actions).'
+        required: false
+        type: string
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -63,7 +67,10 @@ jobs:
         if: ${{ inputs.publish_ios }}
         uses: dawidd6/action-download-artifact@v9
         with:
-          github_token: ${{ github.token }}
+          # when source_repo is set we read another repo's Actions, which needs a PAT
+          # (the default github.token is scoped to this repo only); otherwise stay local.
+          repo: ${{ inputs.source_repo != '' && inputs.source_repo || github.repository }}
+          github_token: ${{ inputs.source_repo != '' && secrets.CLONE_REPO_TOKEN || github.token }}
           workflow: ios-build-scripts.yml
           # run_id and branch/workflow_conclusion are mutually exclusive in this action, so
           # only send the "latest successful on main" filters when no explicit run id is given.
@@ -112,7 +119,8 @@ jobs:
         if: ${{ inputs.publish_android }}
         uses: dawidd6/action-download-artifact@v9
         with:
-          github_token: ${{ github.token }}
+          repo: ${{ inputs.source_repo != '' && inputs.source_repo || github.repository }}
+          github_token: ${{ inputs.source_repo != '' && secrets.CLONE_REPO_TOKEN || github.token }}
           workflow: android-build-scripts.yml
           workflow_conclusion: ${{ inputs.android_build_run_id == '' && 'success' || '' }}
           branch: ${{ inputs.android_build_run_id == '' && 'main' || '' }}
@@ -268,7 +276,8 @@ jobs:
       - name: download this variant's aar from the latest android build
         uses: dawidd6/action-download-artifact@v9
         with:
-          github_token: ${{ github.token }}
+          repo: ${{ inputs.source_repo != '' && inputs.source_repo || github.repository }}
+          github_token: ${{ inputs.source_repo != '' && secrets.CLONE_REPO_TOKEN || github.token }}
           workflow: android-build-scripts.yml
           # run_id and branch/workflow_conclusion are mutually exclusive in this action, so
           # only send the "latest successful on main" filters when no explicit run id is given.
