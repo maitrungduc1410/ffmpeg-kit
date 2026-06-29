@@ -29,7 +29,7 @@ on:
         type: boolean
         default: false
       npm_dist_tag:
-        description: 'npm dist-tag for the publish (use "latest" for the current major, or e.g. "v6" for an older line so it does not move "latest")'
+        description: 'npm dist-tag for the publish. Use "latest" for the current major, or a plain label for an older line so it does not move "latest". Must NOT be a SemVer range: use e.g. "v6-lts" or "legacy", not "v6"/"6.x".'
         required: false
         type: string
         default: 'latest'
