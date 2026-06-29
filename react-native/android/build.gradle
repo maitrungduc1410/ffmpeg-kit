@@ -1,4 +1,11 @@
 buildscript {
+  // The default FFmpegKit native version tracks this package's own version
+  // (package.json), so an app picks the FFmpeg build that matches the installed
+  // @mtd1410/react-native-ffmpegkit release unless it explicitly overrides it.
+  def ffmpegKitDefaultVersion = new groovy.json.JsonSlurper()
+    .parseText(new File(projectDir, "../package.json").text)
+    .version
+
   ext.Ffmpegkit = [
     kotlinVersion: "2.0.21",
     minSdkVersion: 24,
@@ -7,8 +14,10 @@ buildscript {
     // ext { ffmpegKitPackage = "full" } in your project's android/build.gradle,
     // or via -PffmpegKitPackage / -PffmpegKitVersion on the gradle command line.
     // Available variants: min, https, audio, video, full.
+    // ffmpegKitVersion defaults to this package's version (see above) but can be
+    // overridden to pin any other published native version.
     ffmpegKitPackage: "https",
-    ffmpegKitVersion: "7.1.5"
+    ffmpegKitVersion: ffmpegKitDefaultVersion
   ]
 
   ext.getExtOrDefault = { prop ->

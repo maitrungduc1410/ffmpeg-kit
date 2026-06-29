@@ -28,6 +28,11 @@ on:
         required: false
         type: boolean
         default: false
+      npm_dist_tag:
+        description: 'npm dist-tag for the publish (use "latest" for the current major, or e.g. "v6" for an older line so it does not move "latest")'
+        required: false
+        type: string
+        default: 'latest'
       ios_build_run_id:
         description: 'Optional: ios-build-scripts.yml run id to publish from (default: latest successful run on main)'
         required: false
@@ -368,11 +373,15 @@ jobs:
       - name: publish to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # Publishing an older line (e.g. 6.0.x) must NOT move the "latest" tag,
+          # which should keep pointing at the current major. Pass npm_dist_tag=v6
+          # for those; consumers then install via @<pkg>@v6 (or pin the version).
+          NPM_DIST_TAG: ${{ inputs.npm_dist_tag }}
         run: |
           if [ -z "${NODE_AUTH_TOKEN}" ]; then
             echo "::error::NPM_TOKEN secret is not set"; exit 1
           fi
-          npm publish --access public
+          npm publish --access public --tag "${NPM_DIST_TAG:-latest}"
       - name: create or update npm github release
         env:
           GH_TOKEN: ${{ github.token }}

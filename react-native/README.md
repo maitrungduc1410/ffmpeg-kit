@@ -17,23 +17,27 @@ npm install @mtd1410/react-native-ffmpegkit
 
 This package requires React Native 0.76+ with the New Architecture enabled.
 
-### Selecting a package variant
+### Selecting a package variant / version
 
-The default native variant is `https`. To use a different one:
+The default native variant is `https`, and the default native **version matches this
+package's version** (so installing `@x.y.z` pulls the matching FFmpeg `x.y.z` binaries
+on both platforms). You can override either one:
 
-**Android** — set the variant (and optionally the version) in your app's `android/build.gradle`:
+**Android** — set the variant and/or version in your app's `android/build.gradle`
+(or pass `-PffmpegKitPackage` / `-PffmpegKitVersion` on the command line):
 
 ```gradle
 ext {
-  ffmpegKitPackage = "full"   // min | https | audio | video | full
-  ffmpegKitVersion = "7.1.5"
+  ffmpegKitPackage = "full"     // min | https | audio | video | full
+  ffmpegKitVersion = "6.0.6"    // optional; defaults to the installed package version
 }
 ```
 
-**iOS** — set the `FFMPEGKIT_PACKAGE` environment variable when installing pods:
+**iOS** — set the `FFMPEGKIT_PACKAGE` and/or `FFMPEGKIT_VERSION` environment variables
+when installing pods:
 
 ```sh
-cd ios && FFMPEGKIT_PACKAGE=full pod install
+cd ios && FFMPEGKIT_PACKAGE=full FFMPEGKIT_VERSION=6.0.6 pod install
 ```
 
 ## Usage

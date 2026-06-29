@@ -20,7 +20,11 @@ Pod::Spec.new do |s|
   # time with e.g. FFMPEGKIT_PACKAGE=full to pull a different prebuilt package.
   # Available: min, https, audio, video, full (published as ffmpeg-mobile-<variant>).
   ffmpegkit_package = ENV["FFMPEGKIT_PACKAGE"] || "https"
-  s.dependency "ffmpeg-mobile-#{ffmpegkit_package}", "~> #{s.version}"
+  # FFmpegKit native version. Defaults to this package's version (package.json),
+  # so iOS matches the installed @mtd1410/react-native-ffmpegkit release. Override
+  # at `pod install` time with e.g. FFMPEGKIT_VERSION=6.0.6 to pin another version.
+  ffmpegkit_version = ENV["FFMPEGKIT_VERSION"] || s.version.to_s
+  s.dependency "ffmpeg-mobile-#{ffmpegkit_package}", "~> #{ffmpegkit_version}"
 
   install_modules_dependencies(s)
 end
