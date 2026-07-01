@@ -10,6 +10,7 @@
   - [Android (Gradle)](#android-gradle)
   - [React Native](#react-native)
 - [Packages](#packages)
+- [Package size](#package-size)
 - [Releasing](#releasing)
 
 ## About
@@ -121,7 +122,7 @@ There are five packages, each enabling a different set of external and system li
 
 - On `iOS`, `iconv` is provided by the system, so `libiconv` listed above applies to the `Android` builds only.
 
-## Package variants
+## Package size
 
 Approximate size **each variant adds to your app** per platform and FFmpeg version. Pick the smallest variant that has the features you need. Numbers are uncompressed unless noted.
 
