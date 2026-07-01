@@ -10,6 +10,7 @@
   - [Android (Gradle)](#android-gradle)
   - [React Native](#react-native)
 - [Packages](#packages)
+- [Package size](#package-size)
 - [Releasing](#releasing)
 
 ## About
@@ -120,6 +121,34 @@ There are five packages, each enabling a different set of external and system li
 </table>
 
 - On `iOS`, `iconv` is provided by the system, so `libiconv` listed above applies to the `Android` builds only.
+
+## Package size
+
+Approximate size **each variant adds to your app** per platform and FFmpeg version. Pick the smallest variant that has the features you need. Numbers are uncompressed unless noted.
+
+> Measurement basis — Android: per-ABI native libs from the `.aar` (`arm64-v8a`); iOS: `.xcframework` device slice (`arm64`). Your final app-download size after store compression/thinning will be smaller.
+
+> See more here: https://github.com/maitrungduc1410/ffmpeg-kit/releases
+
+### Android
+
+| Variant | v6.0.6 | v7.1.5 |
+| ------- | -----: | -----: |
+| `min`   | 13.4 MB | 14.3 MB |
+| `https` | 15.5 MB | 16.4 MB |
+| `audio` | 18.4 MB | 19.3 MB |
+| `video` | 21.6 MB | 22.5 MB |
+| `full`  | 25.4 MB | 26.2 MB |
+
+### iOS
+
+| Variant | v6.0.6 | v7.1.5 |
+| ------- | -----: | -----: |
+| `min`   | 68 MB | 72.8 MB |
+| `https` | 78.2 MB | 82.9 MB |
+| `audio` | 76.3 MB | 81 MB |
+| `video` | 91.9 MB | 96.4 MB |
+| `full`  | 109 MB | 113 MB |
 
 ## Releasing
 
