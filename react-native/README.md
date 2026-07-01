@@ -1,268 +1,169 @@
-# @mtd1410/react-native-ffmpegkit
+# FFmpegKit (community rebuild)
 
-FFmpegKit for React Native, built for the **New Architecture** (TurboModule + Codegen).
+> A community-maintained rebuild of [`arthenica/ffmpeg-kit`](https://github.com/arthenica/ffmpeg-kit) for **Android** and **iOS**.
 
-It wraps the prebuilt FFmpegKit native binaries:
+## Table of contents
 
-- **Android** — Maven Central: `io.github.maitrungduc1410:ffmpeg-kit-<variant>:7.1.5`
-- **iOS** — CocoaPods: `ffmpeg-mobile-<variant>` (`~> 7.1.5`)
+- [About](#about)
+- [Usage](#usage)
+  - [iOS (CocoaPods)](#ios-cocoapods)
+  - [Android (Gradle)](#android-gradle)
+  - [React Native](#react-native)
+- [Packages](#packages)
+- [Releasing](#releasing)
 
-Available variants: `min`, `https` (default), `audio`, `video`, `full`.
+## About
 
-## Installation
+The original [`ffmpeg-kit`](https://github.com/arthenica/ffmpeg-kit) by Arthenica has been **officially retired** — the project is no longer maintained and all of its previously released prebuilt binaries are being removed from the package registries.
+
+Because our applications still depend on it, this repository **rebuilds and republishes** the binaries so they remain installable.
+
+A few important notes:
+
+- **No GPL builds.** To avoid `GPL` licensing obligations, no `GPL`-licensed libraries (e.g. `x264`, `x265`, `xvidcore`, `vid.stab`) are enabled and no `-gpl` packages are published. Everything here is built under `LGPL v3.0`.
+- **FFmpeg version.** Currently built against **FFmpeg 7.1**.
+- **Platforms.** Only **Android** and **iOS** are supported and published.
+
+## Usage
+
+Replace `min` with whichever package (`min`, `https`, `audio`, `video`, `full`) you need.
+For the full API (running commands, sessions, callbacks, FFprobe, etc.) see the per-platform guides.
+
+### iOS (CocoaPods)
+
+```ruby
+# Podfile
+pod 'ffmpeg-mobile-min', '~> 7.1'
+# pod 'ffmpeg-mobile-https', '~> 7.1'
+# pod 'ffmpeg-mobile-audio', '~> 7.1'
+# pod 'ffmpeg-mobile-video', '~> 7.1'
+# pod 'ffmpeg-mobile-full',  '~> 7.1'
+```
+
+See [`apple/README.md`](apple/README.md) for the iOS API.
+
+### Android (Gradle)
+
+Published to Maven Central under the `io.github.maitrungduc1410` group.
+
+```groovy
+dependencies {
+    implementation 'io.github.maitrungduc1410:ffmpeg-kit-min:7.1.5'
+    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-https:7.1.5'
+    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-audio:7.1.5'
+    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-video:7.1.5'
+    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-full:7.1.5'
+}
+```
+
+See [`android/README.md`](android/README.md) for the Android API.
+
+### React Native
+
+For React Native apps, use the **[`@mtd1410/react-native-ffmpegkit`](react-native/README.md)** package. It is built
+for the **New Architecture** (TurboModule + Codegen) and wraps the same prebuilt binaries published here.
 
 ```sh
 npm install @mtd1410/react-native-ffmpegkit
 ```
 
-This package requires React Native 0.76+ with the New Architecture enabled.
+```js
+import { FFmpegKit, ReturnCode } from '@mtd1410/react-native-ffmpegkit';
 
-### Selecting a package variant / version
+FFmpegKit.execute('-i file1.mp4 -c:v mpeg4 file2.mp4').then(async (session) => {
+  const returnCode = await session.getReturnCode();
 
-The default native variant is `https`, and the default native **version matches this
-package's version** (so installing `@x.y.z` pulls the matching FFmpeg `x.y.z` binaries
-on both platforms). You can override either one:
-
-**Android** — set the variant and/or version in your app's `android/build.gradle`
-(or pass `-PffmpegKitPackage` / `-PffmpegKitVersion` on the command line):
-
-```gradle
-ext {
-  ffmpegKitPackage = "full"     // min | https | audio | video | full
-  ffmpegKitVersion = "6.0.6"    // optional; defaults to the installed package version
-}
+  if (ReturnCode.isSuccess(returnCode)) {
+    // SUCCESS
+  }
+});
 ```
 
-**iOS** — set the `FFMPEGKIT_PACKAGE` and/or `FFMPEGKIT_VERSION` environment variables
-when installing pods:
-
-```sh
-cd ios && FFMPEGKIT_PACKAGE=full FFMPEGKIT_VERSION=6.0.6 pod install
-```
-
-## Usage
-
-1. Execute FFmpeg commands.
-
-    ```js
-    import { FFmpegKit, ReturnCode } from '@mtd1410/react-native-ffmpegkit';
-
-    FFmpegKit.execute('-i file1.mp4 -c:v mpeg4 file2.mp4').then(async (session) => {
-      const returnCode = await session.getReturnCode();
-
-      if (ReturnCode.isSuccess(returnCode)) {
-
-        // SUCCESS
-
-      } else if (ReturnCode.isCancel(returnCode)) {
-
-        // CANCEL
-
-      } else {
-
-        // ERROR
-
-      }
-    });
-    ```
-
-2. Each `execute` call creates a new session. Access every detail about your execution from the
-   session created.
-
-    ```js
-    FFmpegKit.execute('-i file1.mp4 -c:v mpeg4 file2.mp4').then(async (session) => {
-
-      // Unique session id created for this execution
-      const sessionId = session.getSessionId();
-
-      // Command arguments as a single string
-      const command = session.getCommand();
-
-      // Command arguments
-      const commandArguments = session.getArguments();
-
-      // State of the execution. Shows whether it is still running or completed
-      const state = await session.getState();
-
-      // Return code for completed sessions. Will be undefined if session is still running or FFmpegKit fails to run it
-      const returnCode = await session.getReturnCode();
-
-      const startTime = session.getStartTime();
-      const endTime = await session.getEndTime();
-      const duration = await session.getDuration();
-
-      // Console output generated for this execution
-      const output = await session.getOutput();
-
-      // The stack trace if FFmpegKit fails to run a command
-      const failStackTrace = await session.getFailStackTrace();
-
-      // The list of logs generated for this execution
-      const logs = await session.getLogs();
-
-      // The list of statistics generated for this execution (only available on FFmpegSession)
-      const statistics = await session.getStatistics();
-
-    });
-    ```
-
-3. Execute `FFmpeg` commands by providing session specific `execute`/`log`/`session` callbacks.
-
-    ```js
-    FFmpegKit.executeAsync('-i file1.mp4 -c:v mpeg4 file2.mp4', session => {
-
-      // CALLED WHEN SESSION IS EXECUTED
-
-    }, log => {
-
-      // CALLED WHEN SESSION PRINTS LOGS
-
-    }, statistics => {
-
-      // CALLED WHEN SESSION GENERATES STATISTICS
-
-    });
-    ```
-
-4. Execute `FFprobe` commands.
-
-    ```js
-    import { FFprobeKit } from '@mtd1410/react-native-ffmpegkit';
-
-    FFprobeKit.execute(ffprobeCommand).then(async (session) => {
-
-      // CALLED WHEN SESSION IS EXECUTED
-
-    });
-    ```
-
-5. Get media information for a file/url.
-
-    ```js
-    import { FFprobeKit, FFmpegKitConfig } from '@mtd1410/react-native-ffmpegkit';
-
-    FFprobeKit.getMediaInformation(testUrl).then(async (session) => {
-      const information = await session.getMediaInformation();
-
-      if (information === undefined) {
-
-        // CHECK THE FOLLOWING ATTRIBUTES ON ERROR
-        const state = FFmpegKitConfig.sessionStateToString(await session.getState());
-        const returnCode = await session.getReturnCode();
-        const failStackTrace = await session.getFailStackTrace();
-        const duration = await session.getDuration();
-        const output = await session.getOutput();
-      }
-    });
-    ```
-
-6. Stop ongoing FFmpeg operations.
-
-  - Stop all sessions
-    ```js
-    FFmpegKit.cancel();
-    ```
-  - Stop a specific session
-    ```js
-    FFmpegKit.cancel(sessionId);
-    ```
-
-7. (Android) Convert Storage Access Framework (SAF) Uris into paths that can be read or written by
-`FFmpegKit` and `FFprobeKit`.
-
-  - Reading a file:
-    ```js
-    FFmpegKitConfig.selectDocumentForRead('*/*').then(uri => {
-        FFmpegKitConfig.getSafParameterForRead(uri).then(safUrl => {
-            FFmpegKit.executeAsync(`-i ${safUrl} -c:v mpeg4 file2.mp4`);
-        });
-    });
-    ```
-
-  - Writing to a file:
-    ```js
-    FFmpegKitConfig.selectDocumentForWrite('video.mp4', 'video/*').then(uri => {
-        FFmpegKitConfig.getSafParameterForWrite(uri).then(safUrl => {
-            FFmpegKit.executeAsync(`-i file1.mp4 -c:v mpeg4 ${safUrl}`);
-        });
-    });
-    ```
-
-8. Get previous `FFmpeg`, `FFprobe` and `MediaInformation` sessions from the session history.
-
-    ```js
-    FFmpegKit.listSessions().then(sessionList => {
-      sessionList.forEach(async session => {
-        const sessionId = session.getSessionId();
-      });
-    });
-
-    FFprobeKit.listFFprobeSessions().then(sessionList => {
-      sessionList.forEach(async session => {
-        const sessionId = session.getSessionId();
-      });
-    });
-
-    FFprobeKit.listMediaInformationSessions().then(sessionList => {
-      sessionList.forEach(async session => {
-        const sessionId = session.getSessionId();
-      });
-    });
-    ```
-
-9. Enable global callbacks.
-
-  - Session type specific Complete Callbacks, called when an async session has been completed
-
-    ```js
-    FFmpegKitConfig.enableFFmpegSessionCompleteCallback(session => {
-      const sessionId = session.getSessionId();
-    });
-
-    FFmpegKitConfig.enableFFprobeSessionCompleteCallback(session => {
-      const sessionId = session.getSessionId();
-    });
-
-    FFmpegKitConfig.enableMediaInformationSessionCompleteCallback(session => {
-      const sessionId = session.getSessionId();
-    });
-    ```
-
-  - Log Callback, called when a session generates logs
-
-    ```js
-    FFmpegKitConfig.enableLogCallback(log => {
-      const message = log.getMessage();
-    });
-    ```
-
-  - Statistics Callback, called when a session generates statistics
-
-    ```js
-    FFmpegKitConfig.enableStatisticsCallback(statistics => {
-      const size = statistics.getSize();
-    });
-    ```
-
-10. Register system fonts and custom font directories.
-
-    ```js
-    FFmpegKitConfig.setFontDirectoryList(["/system/fonts", "/System/Library/Fonts", "<folder with fonts>"]);
-    ```
-
-See the [Android](../android/README.md) and [Apple](../apple/README.md) READMEs for
-the full FFmpegKit API reference (the JavaScript API mirrors the native one).
-
-## Contributing
-
-- [Development workflow](CONTRIBUTING.md#development-workflow)
-- [Sending a pull request](CONTRIBUTING.md#sending-a-pull-request)
-- [Code of conduct](CODE_OF_CONDUCT.md)
-
-## License
-
-LGPL-3.0-or-later (same as FFmpegKit, no GPL libraries are bundled).
-
----
-
-Made with [create-react-native-library](https://github.com/callstack/react-native-builder-bob)
+See [`react-native/README.md`](react-native/README.md) for installation, selecting a package variant,
+and the full JavaScript API usage.
+
+> Use the latest published version; the examples above may not reflect the most recent release.
+
+## Packages
+
+There are five packages, each enabling a different set of external and system libraries. Pick the smallest one that includes the features you need.
+
+<table>
+<thead>
+<tr>
+<th align="center"></th>
+<th align="center"><sup>min</sup></th>
+<th align="center"><sup>https</sup></th>
+<th align="center"><sup>audio</sup></th>
+<th align="center"><sup>video</sup></th>
+<th align="center"><sup>full</sup></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center"><sup>external libraries</sup></td>
+<td align="center">-</td>
+<td align="center"><sup>openssl</sup></td>
+<td align="center"><sup>lame</sup><br><sup>libilbc</sup><br><sup>libvorbis</sup><br><sup>opencore-amr</sup><br><sup>opus</sup><br><sup>shine</sup><br><sup>soxr</sup><br><sup>speex</sup><br><sup>twolame</sup><br><sup>vo-amrwbenc</sup></td>
+<td align="center"><sup>dav1d</sup><br><sup>fontconfig</sup><br><sup>freetype</sup><br><sup>fribidi</sup><br><sup>kvazaar</sup><br><sup>libass</sup><br><sup>libiconv</sup><br><sup>libtheora</sup><br><sup>libvpx</sup><br><sup>libwebp</sup><br><sup>snappy</sup><br><sup>zimg</sup></td>
+<td align="center"><sup>dav1d</sup><br><sup>fontconfig</sup><br><sup>freetype</sup><br><sup>fribidi</sup><br><sup>kvazaar</sup><br><sup>lame</sup><br><sup>libass</sup><br><sup>libiconv</sup><br><sup>libilbc</sup><br><sup>libtheora</sup><br><sup>libvorbis</sup><br><sup>libvpx</sup><br><sup>libwebp</sup><br><sup>libxml2</sup><br><sup>opencore-amr</sup><br><sup>openssl</sup><br><sup>opus</sup><br><sup>shine</sup><br><sup>snappy</sup><br><sup>soxr</sup><br><sup>speex</sup><br><sup>twolame</sup><br><sup>vo-amrwbenc</sup><br><sup>zimg</sup></td>
+</tr>
+<tr>
+<td align="center"><sup>android system libraries</sup></td>
+<td align="center" colspan=5><sup>zlib</sup><br><sup>MediaCodec</sup></td>
+</tr>
+<tr>
+<td align="center"><sup>ios system libraries</sup></td>
+<td align="center" colspan=5><sup>bzip2</sup><br><sup>AudioToolbox</sup><br><sup>AVFoundation</sup><br><sup>iconv</sup><br><sup>VideoToolbox</sup><br><sup>zlib</sup></td>
+</tr>
+</tbody>
+</table>
+
+- On `iOS`, `iconv` is provided by the system, so `libiconv` listed above applies to the `Android` builds only.
+
+## Package variants
+
+Approximate size **each variant adds to your app** per platform and FFmpeg version. Pick the smallest variant that has the features you need. Numbers are uncompressed unless noted.
+
+> Measurement basis — Android: per-ABI native libs from the `.aar` (`arm64-v8a`); iOS: `.xcframework` device slice (`arm64`). Your final app-download size after store compression/thinning will be smaller.
+
+> See more here: https://github.com/maitrungduc1410/ffmpeg-kit/releases
+
+### Android
+
+| Variant | v6.0.6 | v7.1.5 |
+| ------- | -----: | -----: |
+| `min`   | 13.4 MB | 14.3 MB |
+| `https` | 15.5 MB | 16.4 MB |
+| `audio` | 18.4 MB | 19.3 MB |
+| `video` | 21.6 MB | 22.5 MB |
+| `full`  | 25.4 MB | 26.2 MB |
+
+### iOS
+
+| Variant | v6.0.6 | v7.1.5 |
+| ------- | -----: | -----: |
+| `min`   | 68 MB | 72.8 MB |
+| `https` | 78.2 MB | 82.9 MB |
+| `audio` | 76.3 MB | 81 MB |
+| `video` | 91.9 MB | 96.4 MB |
+| `full`  | 109 MB | 113 MB |
+
+## Releasing
+
+> For maintainers. The platform builds run automatically on push (`android build scripts` / `ios build scripts`) and upload their artifacts. Releasing is a separate, **manual** step that reuses those artifacts — nothing is rebuilt.
+
+Run **Actions → `publish` → Run workflow** and set:
+
+- `release_version` — e.g. `6.0.6` (used for the release tags, the CocoaPods version, and the Maven version).
+- `publish_ios` / `publish_android` — toggle either platform on/off.
+- `ios_build_run_id` / `android_build_run_id` — optional; leave blank to use the latest successful build on `main`, or pin a specific build run to publish from.
+- `source_repo` — optional; `owner/repo` to pull the prebuilt artifacts from instead of this repo (e.g. a clone repo where CI runs the long builds, so the main repo only spends quota on publishing). Requires a `CLONE_REPO_TOKEN` secret — a PAT that can read that repo's Actions (a classic PAT with `public_repo`, or a fine-grained PAT created under the source repo's owner with Actions: Read). Leave blank to use this repo.
+
+What it does:
+
+- **GitHub Releases** — iOS xcframework zips on tag `ios-<version>` (consumed by CocoaPods), Android `.aar`s on tag `android-<version>` (direct-download mirror).
+- **CocoaPods** — pushes the five `ffmpeg-mobile-*` podspecs to trunk.
+- **Maven Central** — publishes the five `io.github.maitrungduc1410:ffmpeg-kit-*` artifacts.
+
+Required repository secrets: `COCOAPODS_TRUNK_TOKEN` (iOS) and `MAVEN_CENTRAL_USERNAME`, `MAVEN_CENTRAL_PASSWORD`, `GPG_SIGNING_KEY`, `GPG_SIGNING_KEY_ID`, `GPG_SIGNING_PASSWORD` (Android). Optionally `CLONE_REPO_TOKEN` when `source_repo` is used.
