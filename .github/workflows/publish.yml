@@ -29,10 +29,15 @@ on:
         type: boolean
         default: false
       npm_dist_tag:
-        description: 'npm dist-tag for the publish. Use "latest" for the current major, or a plain label for an older line so it does not move "latest". Must NOT be a SemVer range: use e.g. "v6-lts" or "legacy", not "v6"/"6.x".'
+        description: 'npm dist-tag. Used both when publishing and in npm_tag_only mode. Use "latest" for the current major, or a plain label for an older line so it does not move "latest". Must NOT be a SemVer range: use e.g. "v6-lts" or "legacy", not "v6"/"6.x".'
         required: false
         type: string
         default: 'latest'
+      npm_tag_only:
+        description: 'npm: only point the npm_dist_tag at the ALREADY-published release_version (npm dist-tag add) — no build/publish/GitHub Release. e.g. release_version=7.1.5 + npm_dist_tag=v7-lts. Takes precedence over publish_npm.'
+        required: false
+        type: boolean
+        default: false
       ios_build_run_id:
         description: 'Optional: ios-build-scripts.yml run id to publish from (default: latest successful run on main)'
         required: false
@@ -344,7 +349,7 @@ jobs:
   # ---------------------------------------------------------------------------
   publish-npm:
     name: publish npm
-    if: ${{ inputs.publish_npm }}
+    if: ${{ inputs.publish_npm || inputs.npm_tag_only }}
     runs-on: ubuntu-22.04
     permissions:
       contents: write  # create the github release
@@ -359,18 +364,50 @@ jobs:
         with:
           node-version-file: react-native/.nvmrc
           registry-url: 'https://registry.npmjs.org'
+
+      # --- tag-only mode: just move a dist-tag onto an existing published version ---
+      # `npm dist-tag add` never republishes, so it avoids the "cannot publish over the
+      # previously published versions" error. All the build/publish/release steps below
+      # are skipped in this mode.
+      - name: add npm dist-tag to an already-published version
+        if: ${{ inputs.npm_tag_only }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN}" ]; then
+            echo "::error::NPM_TOKEN secret is not set"; exit 1
+          fi
+          tag="${{ inputs.npm_dist_tag }}"
+          if [ -z "${tag}" ]; then
+            echo "::error::npm_dist_tag is required in tag-only mode (e.g. v7-lts)"; exit 1
+          fi
+          if [ "${tag}" = "latest" ]; then
+            echo "::warning::npm_dist_tag=latest will MOVE 'latest' to ${{ inputs.release_version }}"
+          fi
+          pkg="$(node -p "require('./package.json').name")"
+          echo "Tagging ${pkg}@${{ inputs.release_version }} as '${tag}'"
+          npm dist-tag add "${pkg}@${{ inputs.release_version }}" "${tag}"
+          echo "Current dist-tags:"
+          npm dist-tag ls "${pkg}"
+
       - name: enable corepack (yarn)
+        if: ${{ !inputs.npm_tag_only }}
         run: corepack enable
       - name: install dependencies
+        if: ${{ !inputs.npm_tag_only }}
         # no committed lockfile, and CI makes yarn immutable by default, so opt out
         run: yarn install --no-immutable
       - name: set package version
+        if: ${{ !inputs.npm_tag_only }}
         run: npm version "${{ inputs.release_version }}" --no-git-tag-version --allow-same-version
       - name: build package (react-native-builder-bob)
+        if: ${{ !inputs.npm_tag_only }}
         run: yarn prepare
       - name: pack tarball
+        if: ${{ !inputs.npm_tag_only }}
         run: npm pack
       - name: publish to npm
+        if: ${{ !inputs.npm_tag_only }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           # Publishing an older line (e.g. 6.0.x) must NOT move the "latest" tag,
@@ -383,6 +420,7 @@ jobs:
           fi
           npm publish --access public --tag "${NPM_DIST_TAG:-latest}"
       - name: create or update npm github release
+        if: ${{ !inputs.npm_tag_only }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
