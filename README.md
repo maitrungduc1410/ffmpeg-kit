@@ -22,7 +22,7 @@ Because our applications still depend on it, this repository **rebuilds and repu
 A few important notes:
 
 - **No GPL builds.** To avoid `GPL` licensing obligations, no `GPL`-licensed libraries (e.g. `x264`, `x265`, `xvidcore`, `vid.stab`) are enabled and no `-gpl` packages are published. Everything here is built under `LGPL v3.0`.
-- **FFmpeg version.** Currently built against **FFmpeg 7.1**.
+- **FFmpeg version.** Currently built against **FFmpeg 8.1**. Earlier lines (**7.1**, **6.0**) remain available as pinned / LTS releases.
 - **Platforms.** Only **Android** and **iOS** are supported and published.
 
 ## Usage

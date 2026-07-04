@@ -36,7 +36,7 @@
 #import "SessionState.h"
 
 /** Global library version */
-NSString* const FFmpegKitVersion = @"7.1";
+NSString* const FFmpegKitVersion = @"8.1";
 
 /**
  * Prefix of named pipes created by ffmpeg-kit.
