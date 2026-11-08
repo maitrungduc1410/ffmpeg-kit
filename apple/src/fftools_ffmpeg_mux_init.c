@@ -1738,7 +1738,8 @@ static void of_add_metadata(OutputFile *of, AVFormatContext *oc,
 
 static void set_channel_layout(OutputFilter *f, OutputStream *ost)
 {
-    const AVCodec *c = ost->enc_ctx->codec;
+    const AVChannelLayout *ch_layouts =
+        codec_supported_config(ost->enc_ctx->codec, AV_CODEC_CONFIG_CHANNEL_LAYOUT);
     int i, err;
 
     if (ost->enc_ctx->ch_layout.order != AV_CHANNEL_ORDER_UNSPEC) {
@@ -1750,7 +1751,7 @@ static void set_channel_layout(OutputFilter *f, OutputStream *ost)
     }
 
     /* Requested layout is of order UNSPEC */
-    if (!c->ch_layouts) {
+    if (!ch_layouts) {
         /* Use the default native layout for the requested amount of channels when the
            encoder doesn't have a list of supported layouts */
         av_channel_layout_default(&f->ch_layout, ost->enc_ctx->ch_layout.nb_channels);
@@ -1758,13 +1759,13 @@ static void set_channel_layout(OutputFilter *f, OutputStream *ost)
     }
     /* Encoder has a list of supported layouts. Pick the first layout in it with the
        same amount of channels as the requested layout */
-    for (i = 0; c->ch_layouts[i].nb_channels; i++) {
-        if (c->ch_layouts[i].nb_channels == ost->enc_ctx->ch_layout.nb_channels)
+    for (i = 0; ch_layouts[i].nb_channels; i++) {
+        if (ch_layouts[i].nb_channels == ost->enc_ctx->ch_layout.nb_channels)
             break;
     }
-    if (c->ch_layouts[i].nb_channels) {
+    if (ch_layouts[i].nb_channels) {
         /* Use it if one is found */
-        err = av_channel_layout_copy(&f->ch_layout, &c->ch_layouts[i]);
+        err = av_channel_layout_copy(&f->ch_layout, &ch_layouts[i]);
         if (err < 0)
             report_and_exit(AVERROR(ENOMEM));
         return;
@@ -2324,24 +2325,24 @@ int of_open(const OptionsContext *o, const char *filename)
                 if (ost->enc_ctx->pix_fmt != AV_PIX_FMT_NONE) {
                     f->format = ost->enc_ctx->pix_fmt;
                 } else {
-                    f->formats = c->pix_fmts;
+                    f->formats = codec_supported_config(c, AV_CODEC_CONFIG_PIX_FORMAT);
                 }
                 break;
             case AVMEDIA_TYPE_AUDIO:
                 if (ost->enc_ctx->sample_fmt != AV_SAMPLE_FMT_NONE) {
                     f->format = ost->enc_ctx->sample_fmt;
                 } else {
-                    f->formats = c->sample_fmts;
+                    f->formats = codec_supported_config(c, AV_CODEC_CONFIG_SAMPLE_FORMAT);
                 }
                 if (ost->enc_ctx->sample_rate) {
                     f->sample_rate = ost->enc_ctx->sample_rate;
                 } else {
-                    f->sample_rates = c->supported_samplerates;
+                    f->sample_rates = codec_supported_config(c, AV_CODEC_CONFIG_SAMPLE_RATE);
                 }
                 if (ost->enc_ctx->ch_layout.nb_channels) {
                     set_channel_layout(f, ost);
-                } else if (c->ch_layouts) {
-                    f->ch_layouts = c->ch_layouts;
+                } else {
+                    f->ch_layouts = codec_supported_config(c, AV_CODEC_CONFIG_CHANNEL_LAYOUT);
                 }
                 break;
             }

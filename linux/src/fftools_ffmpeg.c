@@ -3256,9 +3256,11 @@ static int init_output_stream_encode(OutputStream *ost, AVFrame *frame)
             !ost->frame_rate.den))
             ost->frame_rate = ost->max_frame_rate;
 
-        if (enc_ctx->codec->supported_framerates && !ost->force_fps) {
-            int idx = av_find_nearest_q_idx(ost->frame_rate, enc_ctx->codec->supported_framerates);
-            ost->frame_rate = enc_ctx->codec->supported_framerates[idx];
+        const AVRational *supported_framerates =
+            codec_supported_config(enc_ctx->codec, AV_CODEC_CONFIG_FRAME_RATE);
+        if (supported_framerates && !ost->force_fps) {
+            int idx = av_find_nearest_q_idx(ost->frame_rate, supported_framerates);
+            ost->frame_rate = supported_framerates[idx];
         }
         // reduce frame rate for mpeg4 to be within the spec limits
         if (enc_ctx->codec_id == AV_CODEC_ID_MPEG4) {

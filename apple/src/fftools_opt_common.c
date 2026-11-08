@@ -298,6 +298,20 @@ int show_buildconf(void *optctx, const char *opt, const char *arg)
         av_log(NULL, AV_LOG_ERROR, "\n");                                                        \
     }                                                                        \
 
+/* FFmpeg 9: AVCodec format lists are only reachable via avcodec_get_supported_config() */
+#define PRINT_CODEC_CONFIG(codec, config,    type, list_name, term, get_name) \
+    if (codec_supported_config(codec, config)) {                             \
+        const type *p = codec_supported_config(codec, config);               \
+                                                                             \
+        av_log(NULL, AV_LOG_ERROR, "    Supported " list_name ":");                              \
+        while (*p != term) {                                                 \
+            get_name(*p);                                                    \
+            av_log(NULL, AV_LOG_ERROR, " %s", name);                                             \
+            p++;                                                             \
+        }                                                                    \
+        av_log(NULL, AV_LOG_ERROR, "\n");                                                        \
+    }                                                                        \
+
 static void print_codec(const AVCodec *c)
 {
     int encoder = av_codec_is_encoder(c);
@@ -363,8 +377,8 @@ static void print_codec(const AVCodec *c)
         av_log(NULL, AV_LOG_ERROR, "\n");
     }
 
-    if (c->supported_framerates) {
-        const AVRational *fps = c->supported_framerates;
+    if (codec_supported_config(c, AV_CODEC_CONFIG_FRAME_RATE)) {
+        const AVRational *fps = codec_supported_config(c, AV_CODEC_CONFIG_FRAME_RATE);
 
         av_log(NULL, AV_LOG_ERROR, "    Supported framerates:");
         while (fps->num) {
@@ -373,15 +387,15 @@ static void print_codec(const AVCodec *c)
         }
         av_log(NULL, AV_LOG_ERROR, "\n");
     }
-    PRINT_CODEC_SUPPORTED(c, pix_fmts, enum AVPixelFormat, "pixel formats",
+    PRINT_CODEC_CONFIG(c, AV_CODEC_CONFIG_PIX_FORMAT, enum AVPixelFormat, "pixel formats",
                           AV_PIX_FMT_NONE, GET_PIX_FMT_NAME);
-    PRINT_CODEC_SUPPORTED(c, supported_samplerates, int, "sample rates", 0,
+    PRINT_CODEC_CONFIG(c, AV_CODEC_CONFIG_SAMPLE_RATE, int, "sample rates", 0,
                           GET_SAMPLE_RATE_NAME);
-    PRINT_CODEC_SUPPORTED(c, sample_fmts, enum AVSampleFormat, "sample formats",
+    PRINT_CODEC_CONFIG(c, AV_CODEC_CONFIG_SAMPLE_FORMAT, enum AVSampleFormat, "sample formats",
                           AV_SAMPLE_FMT_NONE, GET_SAMPLE_FMT_NAME);
 
-    if (c->ch_layouts) {
-        const AVChannelLayout *p = c->ch_layouts;
+    if (codec_supported_config(c, AV_CODEC_CONFIG_CHANNEL_LAYOUT)) {
+        const AVChannelLayout *p = codec_supported_config(c, AV_CODEC_CONFIG_CHANNEL_LAYOUT);
 
         av_log(NULL, AV_LOG_ERROR, "    Supported channel layouts:");
         while (p->nb_channels) {

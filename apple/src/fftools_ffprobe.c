@@ -4343,6 +4343,7 @@ int ffprobe_execute(int argc, char **argv)
                 av_log(NULL, AV_LOG_ERROR, "Writing output failed: %s\n", av_err2str(ret));
 
             ret = FFMIN(ret, input_ret);
+        }
 
         main_ffprobe_return_code = ret < 0;
 

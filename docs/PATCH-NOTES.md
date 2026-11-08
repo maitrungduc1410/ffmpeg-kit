@@ -14,7 +14,7 @@ FFmpegKit (Java/ObjC/JS) API changes.
 FFmpeg 9 bumps the major version of every library (`libavcodec`/`libavformat` 62 → 63,
 `libavutil` 60 → 61, `libavfilter` 11 → 12, `libswscale` 9 → 10, `libswresample` 6 → 7,
 `libavdevice` 62 → 63) and drops the APIs deprecated under those majors. The frozen
-`fftools_*` copies used only two of them, so the migration is small.
+`fftools_*` copies used a handful of them, so the migration is small.
 
 **Changed**
 
@@ -32,6 +32,13 @@ FFmpeg 9 bumps the major version of every library (`libavcodec`/`libavformat` 62
     from the side data of decoded frames (`AV_FRAME_DATA_A53_CC`,
     `AV_FRAME_DATA_FILM_GRAIN_PARAMS`), following upstream `ffprobe`. As before, they are
     only `1` when ffprobe actually decoded frames (e.g. `-show_frames` / `-count_frames`).
+  - `fftools_ffmpeg.c`, `fftools_ffmpeg_filter.c`, `fftools_ffmpeg_mux_init.c`,
+    `fftools_opt_common.c`: the `AVCodec` capability lists (`pix_fmts`, `sample_fmts`,
+    `supported_framerates`, `supported_samplerates`, `ch_layouts`) were removed. They are
+    now read through `avcodec_get_supported_config()` (available since FFmpeg 7.1) via a
+    small `codec_supported_config()` helper in `fftools_cmdutils.h`. It returns the same
+    terminated lists, so encoder format negotiation and `-h encoder=...` output are
+    unchanged.
 - **Version strings** bumped `8.1` → `9.0` (`ffmpegkit.h`, `NativeLoader.loadVersion()`,
   `tools/android/build.gradle`, `tools/android/build.lts.gradle`, `FFmpegKitConfig.m`,
   `linux/src/FFmpegKitConfig.h`) and the Android publish default `8.1.2` → `9.0.2`.

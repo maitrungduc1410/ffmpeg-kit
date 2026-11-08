@@ -80,8 +80,9 @@ enum AVPixelFormat
 choose_pixel_fmt(const AVCodec *codec, enum AVPixelFormat target,
                  int strict_std_compliance)
 {
-    if (codec && codec->pix_fmts) {
-        const enum AVPixelFormat *p = codec->pix_fmts;
+    const enum AVPixelFormat *pix_fmts = codec_supported_config(codec, AV_CODEC_CONFIG_PIX_FORMAT);
+    if (pix_fmts) {
+        const enum AVPixelFormat *p = pix_fmts;
         const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(target);
         //FIXME: This should check for AV_PIX_FMT_FLAG_ALPHA after PAL8 pixel format without alpha is implemented
         int has_alpha = desc ? desc->nb_components % 2 == 0 : 0;
@@ -130,10 +131,10 @@ static const char *choose_pix_fmts(OutputFilter *ofilter, AVBPrint *bprint)
     if (ost->enc_ctx->pix_fmt != AV_PIX_FMT_NONE) {
         return av_get_pix_fmt_name(choose_pixel_fmt(enc->codec, enc->pix_fmt,
                                                     ost->enc_ctx->strict_std_compliance));
-    } else if (enc->codec->pix_fmts) {
+    } else if (codec_supported_config(enc->codec, AV_CODEC_CONFIG_PIX_FORMAT)) {
         const enum AVPixelFormat *p;
 
-        p = enc->codec->pix_fmts;
+        p = codec_supported_config(enc->codec, AV_CODEC_CONFIG_PIX_FORMAT);
         if (ost->enc_ctx->strict_std_compliance > FF_COMPLIANCE_UNOFFICIAL) {
             p = get_compliance_normal_pix_fmts(enc->codec, p);
         }

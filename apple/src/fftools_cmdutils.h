@@ -72,6 +72,19 @@
 #include "libavformat/avformat.h"
 #include "libswscale/swscale.h"
 
+/**
+ * FFmpeg 9 removed AVCodec.pix_fmts / sample_fmts / supported_framerates /
+ * supported_samplerates / ch_layouts. Returns the same terminated list via
+ * avcodec_get_supported_config(), or NULL if the codec accepts any value.
+ */
+static inline const void *codec_supported_config(const AVCodec *codec, enum AVCodecConfig config)
+{
+    const void *configs = NULL;
+    if (!codec || avcodec_get_supported_config(NULL, codec, config, 0, &configs, NULL) < 0)
+        return NULL;
+    return configs;
+}
+
 #ifdef _WIN32
 #undef main /* We don't want SDL to override our main() */
 #endif
