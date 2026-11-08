@@ -22,7 +22,7 @@ Because our applications still depend on it, this repository **rebuilds and repu
 A few important notes:
 
 - **No GPL builds.** To avoid `GPL` licensing obligations, no `GPL`-licensed libraries (e.g. `x264`, `x265`, `xvidcore`, `vid.stab`) are enabled and no `-gpl` packages are published. Everything here is built under `LGPL v3.0`.
-- **FFmpeg version.** Currently built against **FFmpeg 8.1**. Earlier lines (**7.1**, **6.0**) remain available as pinned / LTS releases.
+- **FFmpeg version.** Currently built against **FFmpeg 9.0**. Earlier lines (**8.1**, **7.1**, **6.0**) remain available as pinned / LTS releases.
 - **Platforms.** Only **Android** and **iOS** are supported and published.
 
 ## Usage
@@ -34,11 +34,11 @@ For the full API (running commands, sessions, callbacks, FFprobe, etc.) see the 
 
 ```ruby
 # Podfile
-pod 'ffmpeg-mobile-min', '~> 8.1'
-# pod 'ffmpeg-mobile-https', '~> 8.1'
-# pod 'ffmpeg-mobile-audio', '~> 8.1'
-# pod 'ffmpeg-mobile-video', '~> 8.1'
-# pod 'ffmpeg-mobile-full',  '~> 8.1'
+pod 'ffmpeg-mobile-min', '~> 9.0'
+# pod 'ffmpeg-mobile-https', '~> 9.0'
+# pod 'ffmpeg-mobile-audio', '~> 9.0'
+# pod 'ffmpeg-mobile-video', '~> 9.0'
+# pod 'ffmpeg-mobile-full',  '~> 9.0'
 ```
 
 See [`apple/README.md`](apple/README.md) for the iOS API.
@@ -49,11 +49,11 @@ Published to Maven Central under the `io.github.maitrungduc1410` group.
 
 ```groovy
 dependencies {
-    implementation 'io.github.maitrungduc1410:ffmpeg-kit-min:8.1.2'
-    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-https:8.1.2'
-    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-audio:8.1.2'
-    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-video:8.1.2'
-    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-full:8.1.2'
+    implementation 'io.github.maitrungduc1410:ffmpeg-kit-min:9.0.2'
+    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-https:9.0.2'
+    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-audio:9.0.2'
+    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-video:9.0.2'
+    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-full:9.0.2'
 }
 ```
 

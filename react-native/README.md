@@ -22,7 +22,7 @@ Because our applications still depend on it, this repository **rebuilds and repu
 A few important notes:
 
 - **No GPL builds.** To avoid `GPL` licensing obligations, no `GPL`-licensed libraries (e.g. `x264`, `x265`, `xvidcore`, `vid.stab`) are enabled and no `-gpl` packages are published. Everything here is built under `LGPL v3.0`.
-- **FFmpeg version.** Currently built against **FFmpeg 7.1**.
+- **FFmpeg version.** Currently built against **FFmpeg 9.0**. Earlier lines (**8.1**, **7.1**, **6.0**) remain available as pinned / LTS releases.
 - **Platforms.** Only **Android** and **iOS** are supported and published.
 
 ## Usage
@@ -34,11 +34,11 @@ For the full API (running commands, sessions, callbacks, FFprobe, etc.) see the 
 
 ```ruby
 # Podfile
-pod 'ffmpeg-mobile-min', '~> 7.1'
-# pod 'ffmpeg-mobile-https', '~> 7.1'
-# pod 'ffmpeg-mobile-audio', '~> 7.1'
-# pod 'ffmpeg-mobile-video', '~> 7.1'
-# pod 'ffmpeg-mobile-full',  '~> 7.1'
+pod 'ffmpeg-mobile-min', '~> 9.0'
+# pod 'ffmpeg-mobile-https', '~> 9.0'
+# pod 'ffmpeg-mobile-audio', '~> 9.0'
+# pod 'ffmpeg-mobile-video', '~> 9.0'
+# pod 'ffmpeg-mobile-full',  '~> 9.0'
 ```
 
 See [`apple/README.md`](apple/README.md) for the iOS API.
@@ -49,11 +49,11 @@ Published to Maven Central under the `io.github.maitrungduc1410` group.
 
 ```groovy
 dependencies {
-    implementation 'io.github.maitrungduc1410:ffmpeg-kit-min:7.1.5'
-    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-https:7.1.5'
-    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-audio:7.1.5'
-    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-video:7.1.5'
-    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-full:7.1.5'
+    implementation 'io.github.maitrungduc1410:ffmpeg-kit-min:9.0.2'
+    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-https:9.0.2'
+    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-audio:9.0.2'
+    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-video:9.0.2'
+    // implementation 'io.github.maitrungduc1410:ffmpeg-kit-full:9.0.2'
 }
 ```
 
@@ -132,23 +132,23 @@ Approximate size **each variant adds to your app** per platform and FFmpeg versi
 
 ### Android
 
-| Variant | v6.0.6 | v7.1.5 |
-| ------- | -----: | -----: |
-| `min`   | 13.4 MB | 14.3 MB |
-| `https` | 15.5 MB | 16.4 MB |
-| `audio` | 18.4 MB | 19.3 MB |
-| `video` | 21.6 MB | 22.5 MB |
-| `full`  | 25.4 MB | 26.2 MB |
+| Variant | v6.0.6 | v7.1.5 | v8.1.2 |
+| ------- | -----: | -----: | -----: |
+| `min`   | 13.4 MB | 14.3 MB | 14.7 MB |
+| `https` | 15.5 MB | 16.4 MB | 16.9 MB |
+| `audio` | 18.4 MB | 19.3 MB | 19.7 MB |
+| `video` | 21.6 MB | 22.5 MB | 23 MB |
+| `full`  | 25.4 MB | 26.2 MB | 26.7 MB |
 
 ### iOS
 
-| Variant | v6.0.6 | v7.1.5 |
-| ------- | -----: | -----: |
-| `min`   | 68 MB | 72.8 MB |
-| `https` | 78.2 MB | 82.9 MB |
-| `audio` | 76.3 MB | 81 MB |
-| `video` | 91.9 MB | 96.4 MB |
-| `full`  | 109 MB | 113 MB |
+| Variant | v6.0.6 | v7.1.5 | v8.1.2 |
+| ------- | -----: | -----: | -----: |
+| `min`   | 68 MB | 72.8 MB | 75.2 MB |
+| `https` | 78.2 MB | 82.9 MB | 85.5 MB |
+| `audio` | 76.3 MB | 81 MB | 83.4 MB |
+| `video` | 91.9 MB | 96.4 MB | 98.8 MB |
+| `full`  | 109 MB | 113 MB | 116 MB |
 
 ## Releasing
 

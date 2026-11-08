@@ -337,6 +337,9 @@ __thread int nb_streams;
 __thread uint64_t *nb_streams_packets;
 __thread uint64_t *nb_streams_frames;
 __thread int *selected_streams;
+// FFmpeg 9 removed AVCodecContext.properties; track these from decoded frames instead
+__thread int *streams_with_closed_captions;
+__thread int *streams_with_film_grain;
 
 #if HAVE_THREADS
 __thread pthread_mutex_t log_mutex;
@@ -2816,6 +2819,14 @@ static av_always_inline int process_frame(WriterContext *w,
                 show_frame(w, frame, ifile->streams[pkt->stream_index].st, fmt_ctx);
             }
         }
+        if (!is_sub) {
+            for (int i = 0; i < frame->nb_side_data; i++) {
+                if (frame->side_data[i]->type == AV_FRAME_DATA_A53_CC)
+                    streams_with_closed_captions[pkt->stream_index] = 1;
+                else if (frame->side_data[i]->type == AV_FRAME_DATA_FILM_GRAIN_PARAMS)
+                    streams_with_film_grain[pkt->stream_index] = 1;
+            }
+        }
         if (is_sub) {
             avsubtitle_free(&sub);
         }
@@ -2899,6 +2910,8 @@ static int read_interval_packets(WriterContext *w, InputFile *ifile,
             REALLOCZ_ARRAY_STREAM(nb_streams_frames,  nb_streams, fmt_ctx->nb_streams);
             REALLOCZ_ARRAY_STREAM(nb_streams_packets, nb_streams, fmt_ctx->nb_streams);
             REALLOCZ_ARRAY_STREAM(selected_streams,   nb_streams, fmt_ctx->nb_streams);
+            REALLOCZ_ARRAY_STREAM(streams_with_closed_captions, nb_streams, fmt_ctx->nb_streams);
+            REALLOCZ_ARRAY_STREAM(streams_with_film_grain,      nb_streams, fmt_ctx->nb_streams);
             nb_streams = fmt_ctx->nb_streams;
         }
         if (selected_streams[pkt->stream_index]) {
@@ -3039,8 +3052,8 @@ static int show_stream(WriterContext *w, AVFormatContext *fmt_ctx, int stream_id
         if (dec_ctx) {
             print_int("coded_width",  dec_ctx->coded_width);
             print_int("coded_height", dec_ctx->coded_height);
-            print_int("closed_captions", !!(dec_ctx->properties & FF_CODEC_PROPERTY_CLOSED_CAPTIONS));
-            print_int("film_grain", !!(dec_ctx->properties & FF_CODEC_PROPERTY_FILM_GRAIN));
+            print_int("closed_captions", streams_with_closed_captions[stream_idx]);
+            print_int("film_grain",      streams_with_film_grain[stream_idx]);
         }
         print_int("has_b_frames", par->video_delay);
         sar = av_guess_sample_aspect_ratio(fmt_ctx, stream, NULL);
@@ -3481,6 +3494,8 @@ static int probe_file(WriterContext *wctx, const char *filename,
     REALLOCZ_ARRAY_STREAM(nb_streams_frames,0,ifile.fmt_ctx->nb_streams);
     REALLOCZ_ARRAY_STREAM(nb_streams_packets,0,ifile.fmt_ctx->nb_streams);
     REALLOCZ_ARRAY_STREAM(selected_streams,0,ifile.fmt_ctx->nb_streams);
+    REALLOCZ_ARRAY_STREAM(streams_with_closed_captions,0,ifile.fmt_ctx->nb_streams);
+    REALLOCZ_ARRAY_STREAM(streams_with_film_grain,0,ifile.fmt_ctx->nb_streams);
 
     for (i = 0; i < ifile.fmt_ctx->nb_streams; i++) {
         if (stream_specifier) {
@@ -3538,6 +3553,8 @@ end:
     av_freep(&nb_streams_frames);
     av_freep(&nb_streams_packets);
     av_freep(&selected_streams);
+    av_freep(&streams_with_closed_captions);
+    av_freep(&streams_with_film_grain);
 
     return ret;
 }
@@ -4083,6 +4100,8 @@ void ffprobe_var_cleanup() {
     nb_streams_packets = NULL;
     nb_streams_frames = NULL;
     selected_streams = NULL;
+    streams_with_closed_captions = NULL;
+    streams_with_film_grain = NULL;
 
     log_buffer = NULL;
     log_buffer_size = 0;

@@ -5,6 +5,50 @@ Changes in this community rebuild relative to upstream
 For packages, licensing and platform support see the [project README](../README.md);
 for releasing see the README's "Releasing" section.
 
+## 9.0.2: FFmpeg 8.1 → 9.0
+
+Upgrades the bundled FFmpeg from `n8.1.2` to `n9.0.2` (arthenica's FFmpeg mirror; its tags
+point at the same commits as upstream `FFmpeg/FFmpeg`) for **both Android and iOS**. No
+FFmpegKit (Java/ObjC/JS) API changes.
+
+FFmpeg 9 bumps the major version of every library (`libavcodec`/`libavformat` 62 → 63,
+`libavutil` 60 → 61, `libavfilter` 11 → 12, `libswscale` 9 → 10, `libswresample` 6 → 7,
+`libavdevice` 62 → 63) and drops the APIs deprecated under those majors. The frozen
+`fftools_*` copies used only two of them, so the migration is small.
+
+**Changed**
+
+- **FFmpeg source pin** `n8.1.2` → `n9.0.2` (`scripts/source.sh`). No external library
+  versions or `configure` flags needed changing (every flag the build scripts pass still
+  exists in 9.0, and the internal headers copied into `include/` are unchanged).
+- **`fftools_*` FFmpeg-9 API migration**, applied identically to all three platform copies
+  (`android/ffmpeg-kit-android-lib/src/main/cpp`, `apple/src`, `linux/src`):
+  - `fftools_ffmpeg.c`: `avformat_transfer_internal_stream_timing_info()` and
+    `av_stream_get_codec_timebase()` were removed (`FF_API_INTERNAL_TIMING`). Stream copy
+    now falls back to the input stream's time base, the same as upstream `ffmpeg`. As a
+    result `-copytb` is accepted but has no effect (also true upstream).
+  - `fftools_ffprobe.c`: `AVCodecContext.properties` and `FF_CODEC_PROPERTY_*` were removed
+    (`FF_API_CODEC_PROPS`). The `closed_captions` / `film_grain` stream fields are now set
+    from the side data of decoded frames (`AV_FRAME_DATA_A53_CC`,
+    `AV_FRAME_DATA_FILM_GRAIN_PARAMS`), following upstream `ffprobe`. As before, they are
+    only `1` when ffprobe actually decoded frames (e.g. `-show_frames` / `-count_frames`).
+- **Version strings** bumped `8.1` → `9.0` (`ffmpegkit.h`, `NativeLoader.loadVersion()`,
+  `tools/android/build.gradle`, `tools/android/build.lts.gradle`, `FFmpegKitConfig.m`,
+  `linux/src/FFmpegKitConfig.h`) and the Android publish default `8.1.2` → `9.0.2`.
+- **README**: built against FFmpeg 9.0 (8.1 / 7.1 / 6.0 remain available).
+  `react-native/README.md` re-synced with the root README (it was still on 7.1).
+
+**Heads-up for apps**
+
+- **TLS certificate verification is now on by default.** FFmpeg 9 removed
+  `FF_API_NO_DEFAULT_TLS_VERIFY`, so `tls_verify` defaults to `1` (it was `0` up to 8.1).
+  The `https` / `full` packages use OpenSSL, which has no system CA store on Android or
+  iOS, so HTTPS inputs/outputs can fail with a certificate error unless the command passes
+  `-ca_file <path to a PEM bundle>` (recommended) or `-tls_verify 0`.
+- Removed codec IDs `AV_CODEC_ID_V308` / `V408` / `V410` (use `rawvideo` with the
+  matching pixel format). CELT decoding through `libcelt` and old NVENC options are gone
+  too, but none of these were enabled in our builds.
+
 ## 8.1.2 — FFmpeg 7.1 → 8.1
 
 Upgrades the bundled FFmpeg from `n7.1.5` to `n8.1.2` (arthenica's FFmpeg mirror) for
