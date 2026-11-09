@@ -167,4 +167,4 @@ What it does:
 - **CocoaPods** — pushes the five `ffmpeg-mobile-*` podspecs to trunk.
 - **Maven Central** — publishes the five `io.github.maitrungduc1410:ffmpeg-kit-*` artifacts.
 
-Required repository secrets: `COCOAPODS_TRUNK_TOKEN` (iOS) and `MAVEN_CENTRAL_USERNAME`, `MAVEN_CENTRAL_PASSWORD`, `GPG_SIGNING_KEY`, `GPG_SIGNING_KEY_ID`, `GPG_SIGNING_PASSWORD` (Android). Optionally `CLONE_REPO_TOKEN` when `source_repo` is used.
+Required repository secrets: `COCOAPODS_TRUNK_TOKEN` (iOS) and `MAVEN_CENTRAL_USERNAME`, `MAVEN_CENTRAL_PASSWORD`, `GPG_SIGNING_KEY`, `GPG_SIGNING_KEY_ID`, `GPG_SIGNING_PASSWORD` (Android). Optionally `CLONE_REPO_TOKEN` when `source_repo` is used. npm needs no secret: it uses [trusted publishing](https://docs.npmjs.com/trusted-publishers), configured on npmjs.com for this repository and `publish.yml` (enable **Allow npm dist-tag** for `npm_tag_only`).

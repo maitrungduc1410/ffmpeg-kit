@@ -346,6 +346,10 @@ jobs:
   # ships only JS + native source; the prebuilt FFmpeg binaries are pulled from
   # Maven Central (Android) / CocoaPods (iOS) at app build time, so this job is
   # independent of the native build artifacts.
+  #
+  # Authenticates with npm trusted publishing (OIDC), so no npm token is stored in
+  # the repository. The trusted publisher on npmjs.com must point at this repository
+  # and publish.yml, and needs "Allow npm dist-tag" enabled for npm_tag_only mode.
   # ---------------------------------------------------------------------------
   publish-npm:
     name: publish npm
@@ -353,6 +357,7 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       contents: write  # create the github release
+      id-token: write  # npm trusted publishing (OIDC)
     defaults:
       run:
         shell: bash
@@ -364,6 +369,9 @@ jobs:
         with:
           node-version-file: react-native/.nvmrc
           registry-url: 'https://registry.npmjs.org'
+      # Trusted publishing needs npm 11.5.1+, and dist-tag over OIDC needs 11.21.0+.
+      - name: install npm with trusted publishing support
+        run: npm install -g npm@11.21.2
 
       # --- tag-only mode: just move a dist-tag onto an existing published version ---
       # `npm dist-tag add` never republishes, so it avoids the "cannot publish over the
@@ -371,12 +379,7 @@ jobs:
       # are skipped in this mode.
       - name: add npm dist-tag to an already-published version
         if: ${{ inputs.npm_tag_only }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          if [ -z "${NODE_AUTH_TOKEN}" ]; then
-            echo "::error::NPM_TOKEN secret is not set"; exit 1
-          fi
           tag="${{ inputs.npm_dist_tag }}"
           if [ -z "${tag}" ]; then
             echo "::error::npm_dist_tag is required in tag-only mode (e.g. v7-lts)"; exit 1
@@ -409,16 +412,12 @@ jobs:
       - name: publish to npm
         if: ${{ !inputs.npm_tag_only }}
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           # Publishing an older line (e.g. 6.0.x) must NOT move the "latest" tag,
           # which should keep pointing at the current major. Pass npm_dist_tag=v6
           # for those; consumers then install via @<pkg>@v6 (or pin the version).
           NPM_DIST_TAG: ${{ inputs.npm_dist_tag }}
-        run: |
-          if [ -z "${NODE_AUTH_TOKEN}" ]; then
-            echo "::error::NPM_TOKEN secret is not set"; exit 1
-          fi
-          npm publish --access public --tag "${NPM_DIST_TAG:-latest}"
+        # `yarn prepare` already built the package, so skip lifecycle scripts.
+        run: npm publish --access public --provenance --ignore-scripts --tag "${NPM_DIST_TAG:-latest}"
       - name: create or update npm github release
         if: ${{ !inputs.npm_tag_only }}
         env:
