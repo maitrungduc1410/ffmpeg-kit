@@ -132,23 +132,23 @@ Approximate size **each variant adds to your app** per platform and FFmpeg versi
 
 ### Android
 
-| Variant | v6.0.6 | v7.1.5 | v8.1.2 |
-| ------- | -----: | -----: | -----: |
-| `min`   | 13.4 MB | 14.3 MB | 14.7 MB |
-| `https` | 15.5 MB | 16.4 MB | 16.9 MB |
-| `audio` | 18.4 MB | 19.3 MB | 19.7 MB |
-| `video` | 21.6 MB | 22.5 MB | 23 MB |
-| `full`  | 25.4 MB | 26.2 MB | 26.7 MB |
+| Variant | v6.0.6 | v7.1.5 | v8.1.2 | v9.0.2 |
+| ------- | -----: | -----: | -----: | -----: |
+| `min`   | 13.4 MB | 14.3 MB | 14.7 MB | 14.8 MB |
+| `https` | 15.5 MB | 16.4 MB | 16.9 MB | 17 MB |
+| `audio` | 18.4 MB | 19.3 MB | 19.7 MB | 19.8 MB |
+| `video` | 21.6 MB | 22.5 MB | 23 MB | 23 MB |
+| `full`  | 25.4 MB | 26.2 MB | 26.7 MB | 26.8 MB |
 
 ### iOS
 
-| Variant | v6.0.6 | v7.1.5 | v8.1.2 |
-| ------- | -----: | -----: | -----: |
-| `min`   | 68 MB | 72.8 MB | 75.2 MB |
-| `https` | 78.2 MB | 82.9 MB | 85.5 MB |
-| `audio` | 76.3 MB | 81 MB | 83.4 MB |
-| `video` | 91.9 MB | 96.4 MB | 98.8 MB |
-| `full`  | 109 MB | 113 MB | 116 MB |
+| Variant | v6.0.6 | v7.1.5 | v8.1.2 | v9.0.2 |
+| ------- | -----: | -----: | -----: | -----: |
+| `min`   | 68 MB | 72.8 MB | 75.2 MB | 77.7 MB |
+| `https` | 78.2 MB | 82.9 MB | 85.5 MB | 88.3 MB |
+| `audio` | 76.3 MB | 81 MB | 83.4 MB | 86.1 MB |
+| `video` | 91.9 MB | 96.4 MB | 98.8 MB | 102 MB |
+| `full`  | 109 MB | 113 MB | 116 MB | 120 MB |
 
 ## Releasing
 
